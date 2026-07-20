@@ -1,0 +1,26 @@
+{
+  "inbox": "S:/FileRouterNet/demo/inbox",
+  "deferred": "S:/FileRouterNet/demo/deferred",
+  "history_db": "history.sqlite",
+  "naming_mode": "insert",
+  "sort": "size_desc",
+  "uppercase_names": true,
+  "enter_commits": true,
+  "tag_with_route": true,
+  "routes": [
+    {
+      "label": "Invoices",
+      "path": "S:/FileRouterNet/demo/invoices",
+      "hotkey": "Ctrl+1",
+      "append_suffix": true,
+      "suffix": "_INVOICE",
+      "color": "#2e7d32"
+    },
+    {
+      "label": "Statements",
+      "path": "S:/FileRouterNet/demo/statements",
+      "hotkey": "Ctrl+2",
+      "color": "#1565c0"
+    }
+  ]
+}

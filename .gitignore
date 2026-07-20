@@ -1,0 +1,29 @@
+# Build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+.vs/
+
+# Publish output
+publish/
+*.nupkg
+
+# Demo runtime artifacts (generated; not source)
+demo/inbox/
+demo/invoices/
+demo/statements/
+demo/deferred/
+demo/publish/
+demo/history.sqlite
+demo/history.sqlite-*
+demo/screenshot.png
+
+# App runtime files
+history.sqlite
+history.sqlite-journal
+history.sqlite-wal
+history.sqlite-shm
+crash.log
