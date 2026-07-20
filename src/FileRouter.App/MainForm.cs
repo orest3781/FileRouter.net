@@ -363,8 +363,10 @@ public sealed class MainForm : Form
         if (!_session.CanUndo) { ShowStatus("Nothing to undo."); return; }
         try
         {
-            var (filed, original) = _session.UndoLast();
-            ShowStatus($"Undid {Path.GetFileName(filed)} → {Path.GetFileName(original)}");
+            var (filed, original, warning) = _session.UndoLast();
+            ShowStatus(warning.Length > 0
+                ? warning
+                : $"Undid {Path.GetFileName(filed)} → {Path.GetFileName(original)}");
         }
         catch (CommitError ex)
         {

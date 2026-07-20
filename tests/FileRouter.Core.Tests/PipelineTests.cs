@@ -105,7 +105,7 @@ public class PipelineTests : IDisposable
     public void CommitMovesAndRenames()
     {
         var src = MakePdf(_inbox, "20240115--1234567890.pdf");
-        var outcome = Commit.CommitFile(src, "SMITH JOHN", Dest, "insert");
+        var outcome = Commit.CommitFile(src, "SMITH JOHN", Dest, "insert", tagEnabled: false);
         Assert.False(File.Exists(src));
         Assert.True(File.Exists(Path.Combine(_dest, "20240115-SMITH JOHN-1234567890.pdf")));
     }
@@ -115,7 +115,7 @@ public class PipelineTests : IDisposable
     {
         File.WriteAllText(Path.Combine(_dest, "SMITH JOHN.pdf"), "existing");
         var src = MakePdf(_inbox, "20240115--1234567890.pdf");
-        var outcome = Commit.CommitFile(src, "SMITH JOHN", Dest, "replace");
+        var outcome = Commit.CommitFile(src, "SMITH JOHN", Dest, "replace", tagEnabled: false);
         Assert.Equal("SMITH JOHN (2).pdf", Path.GetFileName(outcome.NewPath!));
         Assert.Equal("existing", File.ReadAllText(Path.Combine(_dest, "SMITH JOHN.pdf")));
     }
@@ -125,7 +125,7 @@ public class PipelineTests : IDisposable
     {
         var src = MakePdf(_inbox, "20240115--1234567890.pdf");
         var ex = Assert.Throws<CommitError>(() =>
-            Commit.CommitFile(src, "SMITH:JOHN", Dest, "replace"));
+            Commit.CommitFile(src, "SMITH:JOHN", Dest, "replace", tagEnabled: false));
         Assert.Contains("can't contain", ex.Message);
         Assert.True(File.Exists(src));   // untouched — no ADS data loss
         Assert.Empty(Directory.GetFiles(_dest));
@@ -136,7 +136,7 @@ public class PipelineTests : IDisposable
     {
         var src = MakePdf(_inbox, "20240115--1234567890.pdf");
         var route = new Route { Label = "R", Path = Path.Combine(_root, "gone") };
-        Assert.Throws<CommitError>(() => Commit.CommitFile(src, "X", route, "insert"));
+        Assert.Throws<CommitError>(() => Commit.CommitFile(src, "X", route, "insert", tagEnabled: false));
         Assert.True(File.Exists(src));
     }
 
@@ -170,7 +170,7 @@ public class PipelineTests : IDisposable
         s.CommitCurrent("SMITH JOHN", Dest);
         Assert.False(File.Exists(a));
 
-        var (_, original) = s.UndoLast();
+        var (_, original, _) = s.UndoLast();
         Assert.True(File.Exists(a));         // file is back
         Assert.Equal(0, s.Pos);              // current again
         Assert.Equal(0, s.Filed);
