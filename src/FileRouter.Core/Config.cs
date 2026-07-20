@@ -39,6 +39,9 @@ public sealed class Config
     [JsonPropertyName("uppercase_names")] public bool UppercaseNames { get; set; } = true;
     [JsonPropertyName("routes")] public List<Route> Routes { get; set; } = new();
 
+    // Match & merge: which spreadsheet headers hold the names + the id
+    [JsonPropertyName("merge_headers")] public Dictionary<string, string> MergeHeaders { get; set; } = new();
+
     [JsonExtensionData] public Dictionary<string, JsonElement> Extras { get; set; } = new();
 
     private static readonly JsonSerializerOptions Opts = new()

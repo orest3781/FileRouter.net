@@ -101,6 +101,17 @@ public sealed class MainForm : Form
         _statusStrip.Items.Add(_deferredAlert);
         Controls.Add(_statusStrip);
 
+        // Tools menu — file operations that stand apart from the filing loop.
+        var menu = new MenuStrip();
+        var tools = new ToolStripMenuItem("&Tools");
+        tools.DropDownItems.Add("&Unlock PDFs…", null, (_, _) => new UnlockDialog().ShowDialog(this));
+        tools.DropDownItems.Add("&Bulk rename…", null, (_, _) => new BulkRenameDialog().ShowDialog(this));
+        tools.DropDownItems.Add("&Match and merge…", null, (_, _) =>
+            new MatchMergeDialog(_cfg, SaveMergeHeaders).ShowDialog(this));
+        menu.Items.Add(tools);
+        Controls.Add(menu);
+        MainMenuStrip = menu;
+
         _nameBox.PlaceholderText = "Type name…  (blank = file without renaming)";
         _nameBox.TextChanged += (_, _) => { ForceUpper(); UpdatePreview(); };
         _nameBox.KeyDown += (_, e) =>
@@ -432,6 +443,12 @@ public sealed class MainForm : Form
     }
 
     private void ShowStatus(string message) => _status.Text = message;
+
+    private void SaveMergeHeaders(Dictionary<string, string> headers)
+    {
+        _cfg.MergeHeaders = headers;
+        Config.Save(_cfg, _cfgPath);
+    }
 
     // ------------------------------------------------- smoke-test surface
     /// <summary>When true (headless smoke), warnings are recorded instead of

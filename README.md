@@ -60,13 +60,18 @@ last-used route). `Ctrl+K` sets a file aside; `Ctrl+Shift+Z` undoes.
 
 ## Status
 
-Ported and tested (145 unit tests + a UI smoke): the filing loop (Naming,
-Scanner, Commit, Session), the network-safe audit DB (History), and two of the
-batch tools' logic (BulkRename incl. the review-file parser, MatchMerge). The
-WinForms app runs the full Ready → Processing → Done loop with live inbox
-monitoring, the set-aside alert, and a live filename preview — verified
-end-to-end against the real WebView2 viewer by the smoke harness.
+Feature-complete for the core workflow; 159 unit tests + a UI smoke, all green.
 
-Not yet ported from the Python original: PDF metadata tagging (needs a managed
-PDF library), the Unlock tool (PDF decryption), tool dialogs for Bulk-rename and
-Match-&-merge (their logic is done), and Settings.
+**Done:**
+- Filing loop — Naming, Scanner, Commit, Session — with the Ready →
+  Processing → Done lifecycle, live inbox monitoring, set-aside alert, and a
+  live filename preview. Verified end-to-end against the real WebView2 viewer.
+- Network-safe audit DB (History): rollback journal + busy_timeout, never WAL.
+- PDF metadata tagging (PdfSharp), wired into commit/undo.
+- **Tools menu** — Unlock PDFs (decrypt in place or to a copy), Bulk rename
+  (incl. the "Review files" transform + hand-editable preview), and Match &
+  merge (roster CSV matching + Control-ID merge, with an in-app triage viewer
+  that opens each ambiguous PDF in Edge beside the candidate roster rows).
+
+**Not yet ported:** a Settings dialog (config is edited by hand in
+`config.json` for now), and the Ready-screen "monitored folders" dashboard.
