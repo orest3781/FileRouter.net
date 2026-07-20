@@ -118,6 +118,16 @@ public static partial class BulkRename
                     "new name would be empty — skipped", manual));
                 continue;
             }
+            try
+            {
+                Naming.RejectIllegal(newStem);   // colon etc: readable skip
+            }
+            catch (ArgumentException ex)
+            {
+                planned.Add(new PlannedRename(source, source, false,
+                    ex.Message, manual));
+                continue;
+            }
             var candidate = Path.Combine(dir, newStem + ext);
             if (SameFile(Path.GetFileName(candidate), Path.GetFileName(source)))
             {

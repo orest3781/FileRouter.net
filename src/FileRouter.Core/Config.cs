@@ -13,6 +13,9 @@ public sealed class Route
     [JsonPropertyName("suffix")] public string Suffix { get; set; } = "";
     [JsonPropertyName("naming_mode")] public string? NamingMode { get; set; }
     [JsonPropertyName("color")] public string? Color { get; set; }
+
+    // Python parity: hand-edited per-route keys survive a load/save round trip
+    [JsonExtensionData] public Dictionary<string, System.Text.Json.JsonElement> Extras { get; set; } = new();
 }
 
 /// <summary>config.json load/save/defaults/validation. Unknown top-level keys

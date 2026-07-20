@@ -31,8 +31,13 @@ src/FileRouter.Core/     pure logic — no UI, no Windows dependency, unit-teste
   MatchMerge.cs          roster CSV matching + Control-ID merge
   Config.cs  Scanner.cs  Commit.cs  Session.cs
   History.cs             network-safe SQLite audit log
-src/FileRouter.App/      WinForms shell + WebView2 PDF viewer (the filing loop)
-tests/FileRouter.Core.Tests/   xUnit — 142 tests
+src/FileRouter.App/      WinForms shell + WebView2 PDF viewer (the filing loop:
+                         Ready → Processing → Done, live inbox monitoring,
+                         set-aside alert, live "will be filed as" preview)
+tests/FileRouter.Core.Tests/   xUnit — 145 tests
+tools/FileRouter.Smoke/        headless UI smoke: drives the real form and
+                               proves Edge releases the PDF handle so the move
+                               succeeds (commit / set-aside / undo / history)
 ```
 
 ## Build & test
@@ -55,11 +60,13 @@ last-used route). `Ctrl+K` sets a file aside; `Ctrl+Shift+Z` undoes.
 
 ## Status
 
-Ported and tested (142 tests): the filing loop (Naming, Scanner, Commit,
-Session), the network-safe audit DB (History), and two of the batch tools'
-logic (BulkRename incl. the review-file parser, MatchMerge). The WinForms app
-runs the filing loop end-to-end.
+Ported and tested (145 unit tests + a UI smoke): the filing loop (Naming,
+Scanner, Commit, Session), the network-safe audit DB (History), and two of the
+batch tools' logic (BulkRename incl. the review-file parser, MatchMerge). The
+WinForms app runs the full Ready → Processing → Done loop with live inbox
+monitoring, the set-aside alert, and a live filename preview — verified
+end-to-end against the real WebView2 viewer by the smoke harness.
 
 Not yet ported from the Python original: PDF metadata tagging (needs a managed
-PDF library), the Unlock tool (PDF decryption), tool dialogs/UI, the Ready
-dashboard, live inbox monitoring, and Settings.
+PDF library), the Unlock tool (PDF decryption), tool dialogs for Bulk-rename and
+Match-&-merge (their logic is done), and Settings.

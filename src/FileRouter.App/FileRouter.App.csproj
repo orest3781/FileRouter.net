@@ -16,4 +16,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="FileRouter.Smoke" />
+  </ItemGroup>
 </Project>
