@@ -2,11 +2,43 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <StackPanel>
-        <TextBlock Text="{Binding CountLine}" Style="{StaticResource HeadlineText}" />
+        <TextBlock Text="{Binding CountLine}">
+            <TextBlock.Style>
+                <Style TargetType="TextBlock" BasedOn="{StaticResource HeadlineText}">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding CountAlertOn}" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource Theme.Danger}" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </TextBlock.Style>
+        </TextBlock>
         <TextBlock Text="{Binding DetailLine}" Style="{StaticResource SubtleText}"
                    TextWrapping="Wrap" Margin="0,4,0,0" />
 
-        <!-- monitored-folder tiles are added with the dashboard task -->
+        <StackPanel Visibility="{Binding DashboardVisible, Converter={StaticResource BoolToVis}}"
+                    Margin="0,16,0,0">
+            <TextBlock Text="{Binding MonitorTitle}" FontWeight="SemiBold" Margin="0,0,0,6" />
+            <ItemsControl ItemsSource="{Binding Tiles}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <!-- a real Button: keyboard-focusable, Enter/Space opens
+                             the folder — the WinForms tiles were mouse-only -->
+                        <Button Command="{Binding OpenCommand}"
+                                Background="{Binding Back, Converter={StaticResource RgbToBrush}}"
+                                Foreground="{Binding Fore, Converter={StaticResource RgbToBrush}}"
+                                AutomationProperties.Name="{Binding Label}"
+                                ToolTip="{Binding Tooltip}"
+                                Height="40" Margin="0,2" Padding="10,0"
+                                HorizontalContentAlignment="Left"
+                                BorderThickness="0" Cursor="Hand">
+                            <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis"
+                                       Foreground="{Binding Fore, Converter={StaticResource RgbToBrush}}" />
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
 
         <Button Content="Start Processing" Command="{Binding StartCommand}"
                 Style="{StaticResource PrimaryButton}" Height="48" Margin="0,18,0,0"

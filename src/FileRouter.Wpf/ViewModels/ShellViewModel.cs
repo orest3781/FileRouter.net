@@ -1,6 +1,8 @@
+using System.Collections.ObjectModel;
 using FileRouter.Core;
 using FileRouter.Wpf.Mvvm;
 using FileRouter.Wpf.Services;
+using FileRouter.Wpf.Theme;
 
 namespace FileRouter.Wpf.ViewModels;
 
@@ -19,15 +21,26 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private readonly IPdfViewer _viewer;
     private readonly IDialogService _dialogs;
     private readonly FolderWatchService _watch;
+    private readonly SynchronizationContext? _uiContext;
+    private readonly Func<ThemePalette> _palette;
+    private readonly System.Threading.Timer _flash;
 
     public ShellViewModel(Config cfg, string cfgPath, IPdfViewer viewer,
-        IDialogService dialogs, FolderWatchService watch)
+        IDialogService dialogs, FolderWatchService watch,
+        SynchronizationContext? uiContext = null, Func<ThemePalette>? palette = null)
     {
         _cfg = cfg;
         _cfgPath = cfgPath;
         _viewer = viewer;
         _dialogs = dialogs;
         _watch = watch;
+        _uiContext = uiContext;
+        _palette = palette ?? (() => ThemeManager.Current);
+        _flash = new System.Threading.Timer(_ =>
+        {
+            if (_uiContext is null) FlashTick();
+            else _uiContext.Post(_ => FlashTick(), null);
+        });
 
         var dbPath = ResolvePath(cfg.HistoryDb, cfgPath);
         // Daily point-in-time backup, taken while the file is at rest — BEFORE
@@ -130,9 +143,74 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             : "";
     }
 
-    /// <summary>Dashboard tiles + alert flash land in the dashboard task; the
-    /// Ready refresh path already routes through here so that task is additive.</summary>
-    private void RefreshDashboard(Scanner.ScanResult inboxScan) { }
+    // ----------------------------------------------------------- dashboard
+    public ObservableCollection<TileViewModel> Tiles { get; } = new();
+
+    private string _monitorTitle = "";
+    public string MonitorTitle { get => _monitorTitle; private set => Set(ref _monitorTitle, value); }
+
+    private bool _dashboardVisible;
+    public bool DashboardVisible { get => _dashboardVisible; private set => Set(ref _dashboardVisible, value); }
+
+    private bool _inboxAlerting;
+    public bool InboxAlerting { get => _inboxAlerting; private set => Set(ref _inboxAlerting, value); }
+
+    private bool _flashOn;
+    internal bool FlashRunning { get; private set; }
+
+    /// <summary>The Ready count goes alert-red while an inbox filename trips an
+    /// alert term (flashing, or steady when flash_alerts is off).</summary>
+    public bool CountAlertOn => InboxAlerting && (_flashOn || !_cfg.FlashAlerts);
+
+    /// <summary>Rebuild the monitored-folder tiles (shown on Ready only, and
+    /// only for folders holding files or in error), the inbox alert state, and
+    /// (re)start the 600 ms flash if anything is alerting.</summary>
+    private void RefreshDashboard(Scanner.ScanResult inboxScan)
+    {
+        var statuses = FolderMonitor.All(_cfg.WatchFolders, _cfg.AlertTexts)
+            .Where(s => s.HasFiles || s.Error.Length > 0).ToList();
+
+        Tiles.Clear();
+        foreach (var s in statuses) Tiles.Add(new TileViewModel(s, _palette()));
+
+        MonitorTitle = _cfg.MonitorTitle;
+        DashboardVisible = Screen == Screen.Ready && statuses.Count > 0;
+
+        InboxAlerting = inboxScan.Matching
+            .Any(f => FolderMonitor.IsAlerting(Path.GetFileName(f), _cfg.AlertTexts));
+
+        var anyAlert = InboxAlerting || statuses.Any(s => s.Alerting);
+        if (anyAlert && _cfg.FlashAlerts)
+        {
+            FlashRunning = true;
+            _flash.Change(600, 600);
+        }
+        else
+        {
+            StopFlash();
+        }
+        ApplyFlashAll();
+    }
+
+    internal void FlashTick()
+    {
+        _flashOn = !_flashOn;
+        ApplyFlashAll();
+    }
+
+    private void StopFlash()
+    {
+        FlashRunning = false;
+        _flash.Change(Timeout.Infinite, Timeout.Infinite);
+        _flashOn = false;
+    }
+
+    private void ApplyFlashAll()
+    {
+        var p = _palette();
+        foreach (var tile in Tiles) tile.ApplyFlash(_flashOn, _cfg.FlashAlerts, p);
+        Raise(nameof(CountAlertOn));
+    }
 
     // ------------------------------------------------------------ watching
     /// <summary>Debounced watcher/poll tick: refresh the set-aside alert, and
@@ -180,6 +258,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         _session.Start(scan.Matching);
         Screen = Screen.Processing;
         StatusLine = "";
+        // hide the dashboard while filing
+        DashboardVisible = false;
+        StopFlash();
+        ApplyFlashAll();
         _ = LoadCurrentAsync();
     }
 
@@ -217,6 +299,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         _watch.Activity -= OnFolderActivity;
+        _flash.Dispose();
         _history.Dispose();
     }
 }

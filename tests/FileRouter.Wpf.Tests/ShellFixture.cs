@@ -40,7 +40,8 @@ public sealed class ShellFixture : IDisposable
         tweak?.Invoke(Cfg);
         // huge intervals: tests drive OnFolderActivity directly, deterministically
         Watch = new FolderWatchService(debounceMs: 600_000, pollMs: 600_000);
-        Shell = new ShellViewModel(Cfg, CfgPath, Viewer, Dialogs, Watch);
+        Shell = new ShellViewModel(Cfg, CfgPath, Viewer, Dialogs, Watch,
+            uiContext: null, palette: () => Theme.ThemePalette.Light);
     }
 
     /// <summary>Drop a file matching the inbox pattern (YYYYMMDD--ID.pdf).</summary>

@@ -19,7 +19,7 @@ public partial class MainWindow : Window
         Dialogs = new DialogService(this);
         _watch = new FolderWatchService(context: SynchronizationContext.Current);
         Shell = new ShellViewModel(cfg, cfgPath, _pdf,
-            new DialogRelay(() => Dialogs), _watch);
+            new DialogRelay(() => Dialogs), _watch, SynchronizationContext.Current);
         DataContext = Shell;
 
         Loaded += async (_, _) =>
