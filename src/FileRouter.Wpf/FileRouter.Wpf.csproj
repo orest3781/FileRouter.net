@@ -11,6 +11,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- the WPF SDK drops the System.IO implicit using (Shapes.Path clash);
+         this app is file-plumbing, so bring it back project-wide -->
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\FileRouter.Core\FileRouter.Core.csproj" />
   </ItemGroup>
 
