@@ -278,6 +278,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         set
         {
             var polished = _cfg.UppercaseNames ? value.ToUpperInvariant() : value;
+            if (_cfg.WordSeparator.Length > 0)
+                polished = polished.Replace(" ", _cfg.WordSeparator);
             if (Set(ref _typedName, polished))
             {
                 UpdatePreview();
@@ -454,6 +456,36 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     }
 
     public RelayCommand ExportHistoryCommand { get; }
+
+    /// <summary>Raised after new settings are adopted (window re-applies the
+    /// font resources and hotkey bindings).</summary>
+    public event Action? SettingsApplied;
+
+    /// <summary>Adopt a new config: re-open the DB if its path changed (with a
+    /// fresh daily backup for the NEW db — a gap in the WinForms port), save
+    /// (warning, not crashing, on a read-only file), rebuild watchers, refresh
+    /// Ready. Settings is only reachable from Ready, so no live session.</summary>
+    internal void ApplySettings(Config cfg)
+    {
+        var oldDb = ResolvePath(_cfg.HistoryDb, _cfgPath);
+        var newDb = ResolvePath(cfg.HistoryDb, _cfgPath);
+        _cfg = cfg;
+        if (!Config.TrySave(cfg, _cfgPath, out var error))
+            _dialogs.Warn(error, "FileRouter — settings not saved");
+        if (!string.Equals(oldDb, newDb, StringComparison.OrdinalIgnoreCase))
+        {
+            _history.Dispose();
+            HistoryBackup.BackupDaily(newDb,
+                Path.Combine(Path.GetDirectoryName(Path.GetFullPath(newDb))!, "backups"),
+                DateTime.Now);
+            _history = new History(newDb);
+        }
+        _session = new Session(cfg, _history);
+        _watch.SetFolders(cfg.Inbox, cfg.Deferred);
+        Raise(nameof(UppercaseNames));
+        SettingsApplied?.Invoke();
+        Rescan();
+    }
 
     /// <summary>File → Export history: the whole audit table as a spreadsheet
     /// (with the formula-injection guard History applies).</summary>

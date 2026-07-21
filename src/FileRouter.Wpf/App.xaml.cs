@@ -44,6 +44,7 @@ public partial class App : Application
         }
 
         Theme.ThemeManager.Start(this);
+        ApplyFont(this, cfg);
 
         try
         {
@@ -60,6 +61,15 @@ public partial class App : Application
                 "FileRouter", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown(1);
         }
+    }
+
+    /// <summary>ui_font_family / ui_font_size land in the AppFontFamily and
+    /// AppFontSize resources every window's style consumes.</summary>
+    public static void ApplyFont(Application app, Config cfg)
+    {
+        app.Resources["AppFontFamily"] = new System.Windows.Media.FontFamily(
+            string.IsNullOrWhiteSpace(cfg.UiFontFamily) ? "Segoe UI" : cfg.UiFontFamily);
+        app.Resources["AppFontSize"] = cfg.UiFontSize == 0 ? 14.0 : (double)cfg.UiFontSize;
     }
 
     private void LogCrash(Exception? ex)

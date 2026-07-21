@@ -1,0 +1,459 @@
+<Window x:Class="FileRouter.Wpf.Windows.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:FileRouter.Wpf.ViewModels"
+        Title="FileRouter — Settings" Width="860" Height="640" MinWidth="760" MinHeight="540"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Style="{StaticResource {x:Type Window}}">
+    <Window.Resources>
+        <DataTemplate x:Key="KvpValueTemplate">
+            <TextBlock Text="{Binding Value}" />
+        </DataTemplate>
+        <Style x:Key="FieldLabel" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,10,0" />
+        </Style>
+        <Style x:Key="FieldRow" TargetType="Grid">
+            <Setter Property="Margin" Value="0,0,0,10" />
+        </Style>
+        <Style x:Key="SectionTab" TargetType="TabItem" BasedOn="{StaticResource {x:Type TabItem}}">
+            <Setter Property="MinWidth" Value="120" />
+        </Style>
+        <Style x:Key="Swatch" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Margin" Value="0,0,4,4" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+    </Window.Resources>
+
+    <DockPanel Margin="12">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right"
+                    Margin="0,12,0,0">
+            <Button Content="OK" Click="OnOk" Style="{StaticResource PrimaryButton}"
+                    Width="96" IsDefault="True" Margin="0,0,8,0" />
+            <Button Content="Cancel" Width="96" IsCancel="True" />
+        </StackPanel>
+
+        <TabControl TabStripPlacement="Left" Background="Transparent" BorderThickness="0"
+                    ItemContainerStyle="{StaticResource SectionTab}">
+
+            <!-- ============================================== General -->
+            <TabItem Header="General">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="16,8">
+                        <TextBlock Text="Folders" FontWeight="Bold" Margin="0,0,0,10" />
+
+                        <Grid Style="{StaticResource FieldRow}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="130" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Inbox:" Style="{StaticResource FieldLabel}" />
+                            <TextBox Grid.Column="1" Text="{Binding Inbox, UpdateSourceTrigger=PropertyChanged}" />
+                            <Button Grid.Column="2" Content="Browse…" Margin="6,0,0,0"
+                                    Command="{Binding BrowseInboxCommand}" />
+                        </Grid>
+
+                        <Grid Style="{StaticResource FieldRow}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="130" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Set-aside folder:" Style="{StaticResource FieldLabel}" />
+                            <TextBox Grid.Column="1" Text="{Binding Deferred, UpdateSourceTrigger=PropertyChanged}" />
+                            <Button Grid.Column="2" Content="Browse…" Margin="6,0,0,0"
+                                    Command="{Binding BrowseDeferredCommand}" />
+                        </Grid>
+
+                        <TextBlock Text="Files" FontWeight="Bold" Margin="0,10,0,10" />
+
+                        <Grid Style="{StaticResource FieldRow}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="130" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Names list:" Style="{StaticResource FieldLabel}" />
+                            <TextBox Grid.Column="1" Text="{Binding NamesFile, UpdateSourceTrigger=PropertyChanged}" />
+                            <Button Grid.Column="2" Content="Browse…" Margin="6,0,0,0"
+                                    Command="{Binding BrowseNamesFileCommand}" />
+                        </Grid>
+
+                        <Grid Style="{StaticResource FieldRow}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="130" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="History database:" Style="{StaticResource FieldLabel}" />
+                            <TextBox Grid.Column="1" Text="{Binding HistoryDb, UpdateSourceTrigger=PropertyChanged}" />
+                            <Button Grid.Column="2" Content="Browse…" Margin="6,0,0,0"
+                                    Command="{Binding BrowseHistoryDbCommand}" />
+                        </Grid>
+                        <TextBlock Style="{StaticResource SubtleText}" TextWrapping="Wrap"
+                                   Text="A daily backup of the history database is kept in a 'backups' folder beside it." />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ============================================== Filing -->
+            <TabItem Header="Filing">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="16,8">
+                        <TextBlock Text="Naming" FontWeight="Bold" Margin="0,0,0,10" />
+                        <RadioButton Content="Keep date + ID  (20240115-SMITH JOHN-12345.pdf)"
+                                     IsChecked="{Binding InsertMode}" />
+                        <RadioButton Content="Name only  (SMITH JOHN.pdf)"
+                                     IsChecked="{Binding InsertMode, Converter={StaticResource InvertBool}}" />
+
+                        <Grid Style="{StaticResource FieldRow}" Margin="0,14,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="130" />
+                                <ColumnDefinition Width="220" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Process order:" Style="{StaticResource FieldLabel}" />
+                            <ComboBox Grid.Column="1"
+                                      ItemsSource="{x:Static vm:SettingsViewModel.SortChoices}"
+                                      SelectedValuePath="Key"
+                                      SelectedValue="{Binding SortKey}"
+                                      ItemTemplate="{StaticResource KvpValueTemplate}" />
+                        </Grid>
+
+                        <TextBlock Text="Typing" FontWeight="Bold" Margin="0,10,0,10" />
+                        <CheckBox Content="UPPERCASE names as they're typed"
+                                  IsChecked="{Binding UppercaseNames}" />
+                        <CheckBox Content="Enter files to the last-used destination"
+                                  IsChecked="{Binding EnterCommits}" />
+                        <Grid Style="{StaticResource FieldRow}" Margin="0,8,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="130" />
+                                <ColumnDefinition Width="80" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Word separator:" Style="{StaticResource FieldLabel}" />
+                            <TextBox Grid.Column="1" Text="{Binding WordSeparator, UpdateSourceTrigger=PropertyChanged}"
+                                     MaxLength="3" />
+                            <TextBlock Grid.Column="2" Style="{StaticResource SubtleText}"
+                                       VerticalAlignment="Center" Margin="8,0,0,0"
+                                       Text="typed spaces become this (blank = keep spaces)" />
+                        </Grid>
+
+                        <TextBlock Text="Documents" FontWeight="Bold" Margin="0,10,0,10" />
+                        <CheckBox Content="Stamp the destination label into the PDF (keywords + subject)"
+                                  IsChecked="{Binding TagWithRoute}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ============================================== Routes -->
+            <TabItem Header="Destinations">
+                <Grid Margin="16,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="230" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
+                            <Button Content="Add" Command="{Binding AddRouteCommand}" Width="52" Margin="0,0,4,0" />
+                            <Button Content="Remove" Command="{Binding RemoveRouteCommand}" Width="64" Margin="0,0,4,0" />
+                            <Button Content="↑" Command="{Binding RouteUpCommand}" Width="32" Margin="0,0,4,0" />
+                            <Button Content="↓" Command="{Binding RouteDownCommand}" Width="32" />
+                        </StackPanel>
+                        <ListBox ItemsSource="{Binding Routes}" SelectedItem="{Binding SelectedRoute}"
+                                 DisplayMemberPath="Label" />
+                    </DockPanel>
+
+                    <ScrollViewer Grid.Column="1" Margin="16,0,0,0" VerticalScrollBarVisibility="Auto"
+                                  DataContext="{Binding SelectedRoute}">
+                        <StackPanel>
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding}" Value="{x:Null}">
+                                            <Setter Property="IsEnabled" Value="False" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+
+                            <Grid Style="{StaticResource FieldRow}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Button label:" Style="{StaticResource FieldLabel}" />
+                                <TextBox Grid.Column="1" Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}" />
+                            </Grid>
+
+                            <Grid Style="{StaticResource FieldRow}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Folder:" Style="{StaticResource FieldLabel}" />
+                                <TextBox Grid.Column="1" Text="{Binding Path, UpdateSourceTrigger=PropertyChanged}" />
+                                <Button Grid.Column="2" Content="Browse…" Margin="6,0,0,0"
+                                        Command="{Binding DataContext.BrowseRoutePathCommand,
+                                                  RelativeSource={RelativeSource AncestorType=Window}}" />
+                            </Grid>
+                            <TextBlock Text="{Binding Problem}" Style="{StaticResource StatusText}"
+                                       Margin="110,0,0,10" />
+
+                            <Grid Style="{StaticResource FieldRow}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition Width="160" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Hotkey:" Style="{StaticResource FieldLabel}" />
+                                <TextBox Grid.Column="1" Text="{Binding Hotkey, UpdateSourceTrigger=PropertyChanged}"
+                                         PreviewKeyDown="HotkeyBox_PreviewKeyDown"
+                                         AutomationProperties.Name="Hotkey — press keys to set" />
+                                <TextBlock Grid.Column="2" Style="{StaticResource SubtleText}"
+                                           VerticalAlignment="Center" Margin="8,0,0,0"
+                                           Text="press the keys, or Backspace to clear" />
+                            </Grid>
+
+                            <Grid Style="{StaticResource FieldRow}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition Width="160" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Filename suffix:" Style="{StaticResource FieldLabel}" />
+                                <TextBox Grid.Column="1" Text="{Binding Suffix, UpdateSourceTrigger=PropertyChanged}" />
+                                <CheckBox Grid.Column="2" Content="append it" Margin="8,0,0,0"
+                                          VerticalAlignment="Center" IsChecked="{Binding AppendSuffix}" />
+                            </Grid>
+
+                            <Grid Style="{StaticResource FieldRow}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition Width="220" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Naming mode:" Style="{StaticResource FieldLabel}" />
+                                <ComboBox Grid.Column="1"
+                                          ItemsSource="{x:Static vm:SettingsViewModel.ModeChoices}"
+                                          SelectedValuePath="Key"
+                                          SelectedValue="{Binding NamingMode}"
+                                          ItemTemplate="{StaticResource KvpValueTemplate}" />
+                            </Grid>
+
+                            <Grid Style="{StaticResource FieldRow}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition Width="160" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Button color:" Style="{StaticResource FieldLabel}" />
+                                <TextBox Grid.Column="1" Text="{Binding Color, UpdateSourceTrigger=PropertyChanged}" />
+                            </Grid>
+                            <ItemsControl ItemsSource="{x:Static vm:SettingsViewModel.SwatchColors}"
+                                          Margin="110,0,0,0">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Style="{StaticResource Swatch}" Click="OnRouteSwatch"
+                                                Tag="{Binding}" ToolTip="{Binding}"
+                                                AutomationProperties.Name="{Binding}">
+                                            <Button.Background>
+                                                <SolidColorBrush Color="{Binding}" />
+                                            </Button.Background>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <!-- ============================================== Dashboard -->
+            <TabItem Header="Dashboard">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="16,8">
+                        <Grid Style="{StaticResource FieldRow}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="130" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Section heading:" Style="{StaticResource FieldLabel}" />
+                            <TextBox Grid.Column="1" Text="{Binding MonitorTitle, UpdateSourceTrigger=PropertyChanged}" />
+                        </Grid>
+
+                        <TextBlock Text="Monitored folders" FontWeight="Bold" Margin="0,10,0,8" />
+                        <Grid Height="200">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="200" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <DockPanel>
+                                <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
+                                    <Button Content="Add" Command="{Binding AddWatchCommand}" Width="52" Margin="0,0,4,0" />
+                                    <Button Content="Remove" Command="{Binding RemoveWatchCommand}" Width="64" />
+                                </StackPanel>
+                                <ListBox ItemsSource="{Binding WatchFolders}" SelectedItem="{Binding SelectedWatch}"
+                                         DisplayMemberPath="Label" />
+                            </DockPanel>
+                            <StackPanel Grid.Column="1" Margin="16,0,0,0" DataContext="{Binding SelectedWatch}">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding}" Value="{x:Null}">
+                                                <Setter Property="IsEnabled" Value="False" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <Grid Style="{StaticResource FieldRow}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Label:" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Grid.Column="1" Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}" />
+                                </Grid>
+                                <Grid Style="{StaticResource FieldRow}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Folder:" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Grid.Column="1" Text="{Binding Path, UpdateSourceTrigger=PropertyChanged}" />
+                                    <Button Grid.Column="2" Content="Browse…" Margin="6,0,0,0"
+                                            Command="{Binding DataContext.BrowseWatchPathCommand,
+                                                      RelativeSource={RelativeSource AncestorType=Window}}" />
+                                </Grid>
+                                <Grid Style="{StaticResource FieldRow}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="120" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="File types:" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Grid.Column="1" Text="{Binding Filetypes, UpdateSourceTrigger=PropertyChanged}" />
+                                    <CheckBox Grid.Column="2" Content="include subfolders" Margin="8,0,0,0"
+                                              VerticalAlignment="Center" IsChecked="{Binding Recursive}" />
+                                </Grid>
+                                <Grid Style="{StaticResource FieldRow}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="120" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Tile color:" Style="{StaticResource FieldLabel}" />
+                                    <TextBox Grid.Column="1" Text="{Binding Color, UpdateSourceTrigger=PropertyChanged}" />
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Text="Alerts" FontWeight="Bold" Margin="0,14,0,8" />
+                        <TextBlock Style="{StaticResource SubtleText}" TextWrapping="Wrap"
+                                   Text="Filenames containing any of these terms flash the tile and the inbox count red (one per line):" />
+                        <TextBox Text="{Binding AlertTextsText, UpdateSourceTrigger=PropertyChanged}"
+                                 AcceptsReturn="True" Height="70" Margin="0,6,0,6"
+                                 VerticalScrollBarVisibility="Auto"
+                                 AutomationProperties.Name="Alert terms" />
+                        <CheckBox Content="Flash alerts (uncheck for a steady highlight)"
+                                  IsChecked="{Binding FlashAlerts}" />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ============================================== Appearance -->
+            <TabItem Header="Appearance">
+                <StackPanel Margin="16,8">
+                    <TextBlock Text="Text" FontWeight="Bold" Margin="0,0,0,10" />
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="130" />
+                            <ColumnDefinition Width="220" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="App font:" Style="{StaticResource FieldLabel}" />
+                        <ComboBox Grid.Column="1"
+                                  ItemsSource="{x:Static vm:SettingsViewModel.FontChoices}"
+                                  SelectedValuePath="Key"
+                                  SelectedValue="{Binding UiFontFamily}"
+                                  ItemTemplate="{StaticResource KvpValueTemplate}" />
+                    </Grid>
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="130" />
+                            <ColumnDefinition Width="80" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Base text size:" Style="{StaticResource FieldLabel}" />
+                        <TextBox Grid.Column="1" Text="{Binding UiFontSizeText, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Grid.Column="2" Style="{StaticResource SubtleText}"
+                                   VerticalAlignment="Center" Margin="8,0,0,0"
+                                   Text="6–72, or blank for the default" />
+                    </Grid>
+                    <TextBlock Style="{StaticResource SubtleText}" TextWrapping="Wrap" Margin="0,10,0,0"
+                               Text="Colors follow Windows light/dark mode automatically." />
+                </StackPanel>
+            </TabItem>
+
+            <!-- ============================================== Tools & data -->
+            <TabItem Header="Tools &amp; data">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="16,8">
+                        <TextBlock Text="Unlock PDFs" FontWeight="Bold" Margin="0,0,0,10" />
+                        <Grid Style="{StaticResource FieldRow}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="130" />
+                                <ColumnDefinition Width="160" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Unlocked copy suffix:" Style="{StaticResource FieldLabel}" />
+                            <TextBox Grid.Column="1" Text="{Binding UnlockSuffix, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Column="2" Style="{StaticResource SubtleText}"
+                                       VerticalAlignment="Center" Margin="8,0,0,0" TextWrapping="Wrap"
+                                       Text="blank = replace the original after verifying" />
+                        </Grid>
+
+                        <TextBlock Text="Saved passwords" FontWeight="Bold" Margin="0,10,0,6" />
+                        <TextBlock Style="{StaticResource SubtleText}" TextWrapping="Wrap" Margin="0,0,0,8"
+                                   Text="Encrypted for this Windows account (the old app kept these in plain text)." />
+                        <ListBox ItemsSource="{Binding Passwords}" SelectedItem="{Binding SelectedPassword}"
+                                 Height="110">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Label}" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding StatusText, StringFormat='   ({0})'}"
+                                                   Style="{StaticResource SubtleText}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="NewPwLabel" Margin="0,0,6,0"
+                                     AutomationProperties.Name="New password label" />
+                            <PasswordBox x:Name="NewPwValue" Grid.Column="1" Margin="0,0,6,0"
+                                         AutomationProperties.Name="New password" />
+                            <Button Grid.Column="2" Content="Add" Click="OnAddPassword" Width="52"
+                                    Margin="0,0,6,0" />
+                            <Button Grid.Column="3" Content="Remove" Width="64"
+                                    Command="{Binding RemovePasswordCommand}" />
+                        </Grid>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>

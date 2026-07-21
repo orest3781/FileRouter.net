@@ -23,6 +23,10 @@ public partial class MainWindow : Window
         DataContext = Shell;
 
         Shell.RoutesRebuilt += RebindRouteHotkeys;
+        Shell.SettingsApplied += () => App.ApplyFont(Application.Current, Shell.Cfg);
+        InputBindings.Add(new System.Windows.Input.KeyBinding(
+            new Mvvm.RelayCommand(() => OnSettings(this, new RoutedEventArgs())),
+            System.Windows.Input.Key.OemComma, System.Windows.Input.ModifierKeys.Control));
 
         Loaded += async (_, _) =>
         {
@@ -40,6 +44,20 @@ public partial class MainWindow : Window
     private void OnViewHistory(object sender, RoutedEventArgs e) =>
         new Windows.HistoryWindow(new ViewModels.HistoryViewModel(Shell.History, Dialogs))
         { Owner = this }.ShowDialog();
+
+    private void OnSettings(object sender, RoutedEventArgs e)
+    {
+        if (!Shell.IsReady)
+        {
+            Dialogs.Info("Finish or stop the current session first (Esc stops it — nothing is lost).",
+                "FileRouter");
+            return;
+        }
+        var vm = new SettingsViewModel(Shell.Cfg, Dialogs);
+        var win = new Windows.SettingsWindow(vm) { Owner = this };
+        if (win.ShowDialog() == true && vm.Result is { } cfg)
+            Shell.ApplySettings(cfg);
+    }
 
     private readonly List<System.Windows.Input.KeyBinding> _routeBindings = new();
 

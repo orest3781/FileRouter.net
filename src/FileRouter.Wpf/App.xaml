@@ -10,6 +10,7 @@
             </ResourceDictionary.MergedDictionaries>
             <BooleanToVisibilityConverter x:Key="BoolToVis" />
             <views:RgbToBrushConverter x:Key="RgbToBrush" />
+            <views:InvertBoolConverter x:Key="InvertBool" />
             <FontFamily x:Key="AppFontFamily">Segoe UI</FontFamily>
             <sys:Double x:Key="AppFontSize" xmlns:sys="clr-namespace:System;assembly=mscorlib">14</sys:Double>
         </ResourceDictionary>

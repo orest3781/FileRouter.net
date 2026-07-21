@@ -14,7 +14,7 @@
     <DockPanel>
         <Menu DockPanel.Dock="Top" Padding="4,2">
             <MenuItem Header="_File">
-                <MenuItem x:Name="MenuSettings" Header="_Settings…" IsEnabled="False" />
+                <MenuItem Header="_Settings…" Click="OnSettings" InputGestureText="Ctrl+," />
                 <Separator />
                 <MenuItem Header="_View history…" Click="OnViewHistory" />
                 <MenuItem Header="_Export history to spreadsheet…"
