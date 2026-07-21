@@ -11,7 +11,13 @@ obj/
 publish/
 *.nupkg
 
+# The original Python app, kept beside the repo for parity reference
+.FileRouter_python/
+
 # Demo runtime artifacts (generated; not source)
+demo/config.json
+demo/backups/
+demo/failed/
 demo/inbox/
 demo/invoices/
 demo/statements/

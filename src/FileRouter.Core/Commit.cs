@@ -4,9 +4,6 @@ namespace FileRouter.Core;
 /// The commit pipeline: name -> move. Plus skip and undo. Files are only ever
 /// MOVED — never deleted, never overwritten. Every failure raises CommitError
 /// with a message fit for a dialog box, and the source stays put.
-///
-/// (PDF metadata tagging from the Python version is deferred — it needs a
-/// managed PDF library. The safe-move + audit is the load-bearing part.)
 /// </summary>
 public static class Commit
 {

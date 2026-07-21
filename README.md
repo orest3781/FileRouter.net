@@ -34,7 +34,7 @@ src/FileRouter.Core/     pure logic — no UI, no Windows dependency, unit-teste
 src/FileRouter.App/      WinForms shell + WebView2 PDF viewer (the filing loop:
                          Ready → Processing → Done, live inbox monitoring,
                          set-aside alert, live "will be filed as" preview)
-tests/FileRouter.Core.Tests/   xUnit — 145 tests
+tests/FileRouter.Core.Tests/   xUnit — 183 tests
 tools/FileRouter.Smoke/        headless UI smoke: drives the real form and
                                proves Edge releases the PDF handle so the move
                                succeeds (commit / set-aside / undo / history)
@@ -49,7 +49,9 @@ dotnet test
 
 ## Run the demo
 
-Generate a demo inbox (5 PDFs + 2 routes) and launch against it:
+Run `reset.bat` once to generate the demo workspace (5 PDFs + 2 routes +
+`demo\config.json`, which is machine-generated and not tracked), then launch
+against it:
 
 ```
 dotnet run --project src/FileRouter.App -- --config demo\config.json
@@ -60,7 +62,7 @@ last-used route). `Ctrl+K` sets a file aside; `Ctrl+Shift+Z` undoes.
 
 ## Status
 
-Feature-complete for the core workflow; 159 unit tests + a UI smoke, all green.
+Feature-complete for the core workflow; 183 unit tests + a UI smoke, all green.
 
 **Done:**
 - Filing loop — Naming, Scanner, Commit, Session — with the Ready →
