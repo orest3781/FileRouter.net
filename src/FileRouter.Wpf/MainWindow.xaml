@@ -17,7 +17,8 @@
                 <MenuItem x:Name="MenuSettings" Header="_Settings…" IsEnabled="False" />
                 <Separator />
                 <MenuItem x:Name="MenuHistory" Header="_View history…" IsEnabled="False" />
-                <MenuItem x:Name="MenuExport" Header="_Export history to spreadsheet…" IsEnabled="False" />
+                <MenuItem Header="_Export history to spreadsheet…"
+                          Command="{Binding ExportHistoryCommand}" />
                 <Separator />
                 <MenuItem Header="E_xit" Click="OnExit" />
             </MenuItem>

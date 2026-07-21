@@ -59,6 +59,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         SkipCommand = new AsyncRelayCommand(OnSkipAsync);
         UndoCommand = new RelayCommand(OnUndo, () => _session.CanUndo);
         StopCommand = new RelayCommand(StopSession);
+        ExportHistoryCommand = new RelayCommand(ExportHistory);
 
         _watch.Activity += OnFolderActivity;
     }
@@ -450,6 +451,25 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         if (_lastRoute is { } i && i < _cfg.Routes.Count) return OnRouteAsync(i);
         StatusLine = "Enter files to the last-used route — press a route button first.";
         return Task.CompletedTask;
+    }
+
+    public RelayCommand ExportHistoryCommand { get; }
+
+    /// <summary>File → Export history: the whole audit table as a spreadsheet
+    /// (with the formula-injection guard History applies).</summary>
+    internal void ExportHistory()
+    {
+        var dest = _dialogs.AskSaveFile("Spreadsheet files (*.csv)|*.csv", "filerouter_history.csv");
+        if (dest is null) return;
+        try
+        {
+            var count = _history.ExportCsv(dest);
+            _dialogs.Info($"Exported {count} rows to {dest}", "FileRouter");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _dialogs.Warn("Couldn't save it: " + ex.Message, "FileRouter");
+        }
     }
 
     /// <summary>Esc: back to Ready. Nothing is lost — the remaining queue
