@@ -1,27 +1,47 @@
-using System;
-using System.Threading;
-using System.Windows.Forms;
-using System.Collections.Generic;
-using FileRouter.App;
 using FileRouter.Core;
+using FileRouter.Wpf.ViewModels;
+using FileRouter.Wpf.Windows;
 
+/// <summary>Constructs every secondary window against the real app resources
+/// and forces layout — catches XAML/binding wiring errors without showing UI.</summary>
 public static class DialogCheck
 {
-    public static int Run()
+    public static int Run() => SmokeUi.RunSta(Drive,
+        "DIALOGS OK — all six construct cleanly",
+        "DIALOG FAIL:");
+
+    private static List<string> Drive()
     {
         var errors = new List<string>();
-        var t = new Thread(() =>
+        SmokeUi.Boot();
+        var dialogs = new RecordingDialogs();
+        var dir = Directory.CreateTempSubdirectory("fr_dialogcheck").FullName;
+
+        void Check(string name, Func<System.Windows.Window> make)
         {
-            ApplicationConfiguration.Initialize();
-            try { using var d = new UnlockDialog(); _ = d.Handle; } catch (Exception ex) { errors.Add("Unlock: " + ex.Message); }
-            try { using var d = new BulkRenameDialog(); _ = d.Handle; } catch (Exception ex) { errors.Add("BulkRename: " + ex.Message); }
-            try { using var d = new MatchMergeDialog(new Config(), _ => { }); _ = d.Handle; } catch (Exception ex) { errors.Add("MatchMerge: " + ex.Message); }
-            try { using var d = new SettingsDialog(new Config()); _ = d.Handle; } catch (Exception ex) { errors.Add("Settings: " + ex.Message); }
-        });
-        t.SetApartmentState(ApartmentState.STA);
-        t.Start(); t.Join();
-        if (errors.Count == 0) { Console.WriteLine("DIALOGS OK — all four construct cleanly"); return 0; }
-        foreach (var e in errors) Console.WriteLine("DIALOG FAIL: " + e);
-        return 1;
+            try
+            {
+                var w = make();
+                w.Measure(new System.Windows.Size(1000, 800));   // force template + bindings
+                w.Close();
+            }
+            catch (Exception ex) { errors.Add($"{name}: {ex.Message}"); }
+        }
+
+        Check("Unlock", () => new UnlockWindow(new UnlockViewModel(new Config(), () => { })));
+        Check("BulkRename", () => new BulkRenameWindow(new BulkRenameViewModel()));
+        Check("MatchMerge", () => new MatchMergeWindow(
+            new MatchMergeViewModel(new Config(), _ => { }, dialogs)));
+        Check("Settings", () => new SettingsWindow(new SettingsViewModel(new Config(), dialogs)));
+        Check("Triage", () => new TriageWindow(new List<MatchMerge.MatchResult>(), new[] { "A", "B" }));
+
+        using (var history = new History(Path.Combine(dir, "history.sqlite")))
+        {
+            Check("History", () => new HistoryWindow(new HistoryViewModel(history, dialogs)));
+        }
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+
+        try { Directory.Delete(dir, true); } catch { /* best effort */ }
+        return errors;
     }
 }

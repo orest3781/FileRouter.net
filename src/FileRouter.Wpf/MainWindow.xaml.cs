@@ -11,6 +11,7 @@ public partial class MainWindow : Window
     private readonly FolderWatchService _watch;
     internal ShellViewModel Shell { get; }
     internal IDialogService Dialogs { get; set; }
+    internal WebViewPdfViewer Pdf => _pdf;
 
     public MainWindow(Config cfg, string cfgPath)
     {
