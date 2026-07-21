@@ -31,6 +31,15 @@ public sealed class WatchFolder
     [JsonExtensionData] public Dictionary<string, System.Text.Json.JsonElement> Extras { get; set; } = new();
 }
 
+/// <summary>A saved Unlock-tool password. The password value is either
+/// DPAPI-protected ("dpapi:&lt;base64&gt;", written by the app) or legacy
+/// plaintext (hand-edited / migrated from the Python config).</summary>
+public sealed class SavedPassword
+{
+    [JsonPropertyName("label")] public string Label { get; set; } = "";
+    [JsonPropertyName("password")] public string Password { get; set; } = "";
+}
+
 /// <summary>config.json load/save/defaults/validation. Unknown top-level keys
 /// survive a load/save round trip (kept in <see cref="Extras"/>).</summary>
 public sealed class Config
@@ -60,6 +69,17 @@ public sealed class Config
     [JsonPropertyName("alert_texts")] public List<string> AlertTexts { get; set; } = new();
     [JsonPropertyName("monitor_title")] public string MonitorTitle { get; set; } = "Monitored folders";
     [JsonPropertyName("flash_alerts")] public bool FlashAlerts { get; set; } = true;
+
+    // Appearance (Python parity: same key names, so an old config round-trips)
+    [JsonPropertyName("ui_font_family")] public string UiFontFamily { get; set; } = "";
+    [JsonPropertyName("ui_font_size")] public int UiFontSize { get; set; }   // 0 = default
+
+    // Typed space becomes this string in the name box ("" = keep spaces)
+    [JsonPropertyName("word_separator")] public string WordSeparator { get; set; } = "";
+
+    // Unlock tool: "" = decrypt the original in place; else suffix for a copy
+    [JsonPropertyName("unlock_suffix")] public string UnlockSuffix { get; set; } = "";
+    [JsonPropertyName("saved_passwords")] public List<SavedPassword> SavedPasswords { get; set; } = new();
 
     [JsonExtensionData] public Dictionary<string, JsonElement> Extras { get; set; } = new();
 
@@ -98,6 +118,12 @@ public sealed class Config
         if (Array.IndexOf(Sorts, cfg.Sort) < 0)
             throw new ConfigException($"sort must be one of {string.Join('/', Sorts)}, " +
                                       $"got \"{cfg.Sort}\"");
+        if (cfg.UiFontSize is not 0 and (< 6 or > 72))
+            throw new ConfigException(
+                $"ui_font_size must be 0 (default) or 6-72, got {cfg.UiFontSize}");
+        if (cfg.WordSeparator.Contains(' '))
+            throw new ConfigException(
+                "word_separator must not contain a space — substitution would loop forever");
         return cfg;
     }
 
