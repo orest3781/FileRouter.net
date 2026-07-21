@@ -6,7 +6,7 @@ on:
 
 jobs:
   build-test:
-    runs-on: windows-latest   # the App targets net8.0-windows (WinForms + WebView2)
+    runs-on: windows-latest   # the app targets net8.0-windows (WPF + WebView2)
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -18,3 +18,20 @@ jobs:
         run: dotnet build --no-restore -c Release
       - name: Test
         run: dotnet test --no-build -c Release --verbosity normal
+
+  smoke:
+    # the UI proofs: real WebView2 releases the PDF handle before the move,
+    # double-fire commits exactly once, every window constructs cleanly
+    runs-on: windows-latest
+    needs: build-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Dialogs
+        run: dotnet run --project tools/FileRouter.Smoke -- dialogs
+      - name: Reentrancy
+        run: dotnet run --project tools/FileRouter.Smoke -- reentrancy
+      - name: Filing loop
+        run: dotnet run --project tools/FileRouter.Smoke

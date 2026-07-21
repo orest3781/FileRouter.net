@@ -13,10 +13,10 @@ if not exist "%CONFIG%" (
     exit /b 1
 )
 
-set "EXE=%~dp0src\FileRouter.App\bin\Debug\net8.0-windows\FileRouter.App.exe"
+set "EXE=%~dp0src\FileRouter.Wpf\bin\Debug\net8.0-windows\FileRouter.Wpf.exe"
 if not exist "%EXE%" (
     echo Building FileRouter for the first time...
-    dotnet build src\FileRouter.App\FileRouter.App.csproj -c Debug -v quiet
+    dotnet build src\FileRouter.Wpf\FileRouter.Wpf.csproj -c Debug -v quiet
     if errorlevel 1 ( echo Build failed. & pause & exit /b 1 )
 )
 
