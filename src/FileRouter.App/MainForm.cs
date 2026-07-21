@@ -43,12 +43,21 @@ public sealed class MainForm : Form
     private int? _lastRoute;
     private bool _viewerReady;
     private bool _processing;
+    private bool _busy;   // reentrancy guard for commit/skip/undo
+    private readonly AutoCompleteStringCollection _completer = new();
 
     public MainForm(Config cfg, string cfgPath)
     {
         _cfg = cfg;
         _cfgPath = cfgPath;
-        _history = new History(ResolvePath(cfg.HistoryDb, cfgPath));
+        var dbPath = ResolvePath(cfg.HistoryDb, cfgPath);
+        // Daily point-in-time backup, taken while the file is at rest — BEFORE
+        // we open the connection. The audit DB is the only link between a filed
+        // document and its original id, so it must have redundancy.
+        HistoryBackup.BackupDaily(dbPath,
+            Path.Combine(Path.GetDirectoryName(Path.GetFullPath(dbPath))!, "backups"),
+            DateTime.Now);
+        _history = new History(dbPath);
         _session = new Session(cfg, _history);
 
         Text = "FileRouter";
@@ -108,10 +117,18 @@ public sealed class MainForm : Form
         tools.DropDownItems.Add("&Bulk rename…", null, (_, _) => new BulkRenameDialog().ShowDialog(this));
         tools.DropDownItems.Add("&Match and merge…", null, (_, _) =>
             new MatchMergeDialog(_cfg, SaveMergeHeaders).ShowDialog(this));
+        var file = new ToolStripMenuItem("&File");
+        file.DropDownItems.Add("&Export history to spreadsheet…", null, (_, _) => ExportHistory());
+        menu.Items.Add(file);
         menu.Items.Add(tools);
         Controls.Add(menu);
         MainMenuStrip = menu;
 
+        // history-ranked name suggestions (recency, then frequency), seeded
+        // from names.txt — the speed win for the "type name" loop
+        _nameBox.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+        _nameBox.AutoCompleteSource = AutoCompleteSource.CustomSource;
+        _nameBox.AutoCompleteCustomSource = _completer;
         _nameBox.PlaceholderText = "Type name…  (blank = file without renaming)";
         _nameBox.TextChanged += (_, _) => { ForceUpper(); UpdatePreview(); };
         _nameBox.KeyDown += (_, e) =>
@@ -242,7 +259,38 @@ public sealed class MainForm : Form
         _nameBox.Visible = _preview.Visible = _routes.Visible = _skip.Visible = true;
         _undo.Visible = true;
         _start.Visible = _rescan.Visible = false;
+        RefreshCompleter();
         LoadCurrent();
+    }
+
+    private void RefreshCompleter()
+    {
+        var seeds = Completer.LoadSeedNames(
+            string.IsNullOrWhiteSpace(_cfg.NamesFile) ? null : ResolvePath(_cfg.NamesFile, _cfgPath));
+        var names = Completer.Names(_history, seeds);
+        _completer.Clear();
+        _completer.AddRange(names.ToArray());
+    }
+
+    private void ExportHistory()
+    {
+        using var dlg = new SaveFileDialog
+        {
+            Filter = "Spreadsheet files (*.csv)|*.csv",
+            FileName = "filerouter_history.csv",
+        };
+        if (dlg.ShowDialog(this) != DialogResult.OK) return;
+        try
+        {
+            var count = _history.ExportCsv(dlg.FileName);
+            MessageBox.Show($"Exported {count} rows to {dlg.FileName}", "FileRouter",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        catch (IOException ex)
+        {
+            MessageBox.Show("Couldn't save it: " + ex.Message, "FileRouter",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
     }
 
     private void BuildRoutes()
@@ -324,24 +372,33 @@ public sealed class MainForm : Form
 
     internal async Task OnRouteAsync(int index)
     {
-        if (!_processing || _session.Current is null || index >= _cfg.Routes.Count) return;
-        var typed = _nameBox.Text;
-        await ReleaseViewerAsync();
+        // _busy is set BEFORE the first await: without it, a fast second
+        // Enter/Ctrl+1 would start a second commit during ReleaseViewerAsync's
+        // yield, capturing the same textbox text and mislabeling the next doc.
+        if (_busy || !_processing || _session.Current is null || index >= _cfg.Routes.Count) return;
+        _busy = true;
         try
         {
-            var outcome = _session.CommitCurrent(typed, _cfg.Routes[index]);
-            _lastRoute = index;
-            if (outcome.Vanished)
-                ShowStatus("That file disappeared from the inbox — logged and moved on.");
+            var typed = _nameBox.Text;
+            await ReleaseViewerAsync();
+            try
+            {
+                var outcome = _session.CommitCurrent(typed, _cfg.Routes[index]);
+                _lastRoute = index;
+                if (outcome.Vanished)
+                    ShowStatus("That file disappeared from the inbox — logged and moved on.");
+            }
+            catch (CommitError ex)
+            {
+                Warn(ex.Message, "FileRouter — couldn't file it");
+                LoadCurrent();   // reload the same doc; nothing moved
+                return;
+            }
+            RefreshDeferredAlert();
+            RefreshCompleter();   // the just-used name is now suggestable
+            LoadCurrent();
         }
-        catch (CommitError ex)
-        {
-            Warn(ex.Message, "FileRouter — couldn't file it");
-            LoadCurrent();   // reload the same doc; nothing moved
-            return;
-        }
-        RefreshDeferredAlert();
-        LoadCurrent();
+        finally { _busy = false; }
     }
 
     private void OnEnter()
@@ -353,45 +410,57 @@ public sealed class MainForm : Form
 
     private async void OnSkip()
     {
-        if (!_processing || _session.Current is null) return;
-        await ReleaseViewerAsync();
+        if (_busy || !_processing || _session.Current is null) return;
+        _busy = true;
         try
         {
-            var outcome = _session.SkipCurrent();
-            if (outcome.Vanished)
-                ShowStatus("That file disappeared from the inbox — logged and moved on.");
+            await ReleaseViewerAsync();
+            try
+            {
+                var outcome = _session.SkipCurrent();
+                if (outcome.Vanished)
+                    ShowStatus("That file disappeared from the inbox — logged and moved on.");
+            }
+            catch (CommitError ex)
+            {
+                Warn(ex.Message, "FileRouter — set-aside failed");
+            }
+            RefreshDeferredAlert();
+            LoadCurrent();
         }
-        catch (CommitError ex)
-        {
-            Warn(ex.Message, "FileRouter — set-aside failed");
-        }
-        RefreshDeferredAlert();
-        LoadCurrent();
+        finally { _busy = false; }
     }
 
     private void OnUndo()
     {
+        if (_busy) return;
         if (!_session.CanUndo) { ShowStatus("Nothing to undo."); return; }
+        _busy = true;
         try
         {
-            var (filed, original, warning) = _session.UndoLast();
-            ShowStatus(warning.Length > 0
-                ? warning
-                : $"Undid {Path.GetFileName(filed)} → {Path.GetFileName(original)}");
+            try
+            {
+                var (filed, original, warning) = _session.UndoLast();
+                ShowStatus(warning.Length > 0
+                    ? warning
+                    : $"Undid {Path.GetFileName(filed)} → {Path.GetFileName(original)}");
+            }
+            catch (CommitError ex)
+            {
+                Warn(ex.Message, "FileRouter — undo failed");
+                return;
+            }
+            if (!_processing)   // undo from the Done screen re-enters the session
+            {
+                _processing = true;
+                _nameBox.Visible = _preview.Visible = _routes.Visible = _skip.Visible = true;
+                _start.Visible = _rescan.Visible = false;
+            }
+            RefreshDeferredAlert();
+            RefreshCompleter();   // a reverted name may drop out of the suggestions
+            LoadCurrent();
         }
-        catch (CommitError ex)
-        {
-            Warn(ex.Message, "FileRouter — undo failed");
-            return;
-        }
-        if (!_processing)   // undo from the Done screen re-enters the session
-        {
-            _processing = true;
-            _nameBox.Visible = _preview.Visible = _routes.Visible = _skip.Visible = true;
-            _start.Visible = _rescan.Visible = false;
-        }
-        RefreshDeferredAlert();
-        LoadCurrent();
+        finally { _busy = false; }
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)

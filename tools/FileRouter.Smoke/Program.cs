@@ -14,6 +14,7 @@ using FileRouter.App;
 using FileRouter.Core;
 
 if (args.Length > 0 && args[0] == "dialogs") return DialogCheck.Run();
+if (args.Length > 0 && args[0] == "reentrancy") return Reentrancy.Run();
 var failures = new List<string>();
 var root = Path.Combine(Path.GetTempPath(), "fr_smoke_" + Guid.NewGuid().ToString("N"));
 

@@ -143,6 +143,49 @@ public sealed class History : IDisposable
         return Read(cmd);
     }
 
+    /// <summary>Distinct committed names, most recently used first, then by how
+    /// often — the autocomplete order. Blank and reverted rows don't count.</summary>
+    public List<string> RankedNames()
+    {
+        using var cmd = _conn.CreateCommand();
+        cmd.CommandText =
+            "SELECT name_entered FROM history" +
+            " WHERE name_entered != '' AND reverted = 0" +
+            " GROUP BY name_entered" +
+            " ORDER BY MAX(ts_utc) DESC, COUNT(*) DESC, MAX(id) DESC";
+        var names = new List<string>();
+        using var r = cmd.ExecuteReader();
+        while (r.Read()) names.Add(r.GetString(0));
+        return names;
+    }
+
+    /// <summary>Write the whole table to CSV (Excel-friendly BOM), chronological.
+    /// Returns the row count. Cells that a spreadsheet would read as a formula
+    /// (=, +, -, @, tab, CR) get a leading apostrophe so opening the file can't
+    /// execute anything.</summary>
+    public int ExportCsv(string dest)
+    {
+        using var cmd = _conn.CreateCommand();
+        cmd.CommandText = "SELECT * FROM history ORDER BY id";
+        var rows = Read(cmd);
+        using var writer = new StreamWriter(dest, false, new System.Text.UTF8Encoding(true));
+        writer.WriteLine(string.Join(",", Columns.Select(CsvField)));
+        foreach (var row in rows)
+            writer.WriteLine(string.Join(",",
+                Columns.Select(c => CsvField(row.TryGetValue(c, out var v) ? v?.ToString() ?? "" : ""))));
+        return rows.Count;
+    }
+
+    private static string CsvField(string value)
+    {
+        // formula-injection guard first
+        if (value.Length > 0 && "=+-@\t\r".IndexOf(value[0]) >= 0)
+            value = "'" + value;
+        if (value.IndexOfAny(new[] { ',', '"', '\n', '\r' }) >= 0)
+            value = "\"" + value.Replace("\"", "\"\"") + "\"";
+        return value;
+    }
+
     private static List<IReadOnlyDictionary<string, object>> Read(SqliteCommand cmd)
     {
         var rows = new List<IReadOnlyDictionary<string, object>>();

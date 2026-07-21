@@ -64,9 +64,13 @@ Feature-complete for the core workflow; 159 unit tests + a UI smoke, all green.
 
 **Done:**
 - Filing loop — Naming, Scanner, Commit, Session — with the Ready →
-  Processing → Done lifecycle, live inbox monitoring, set-aside alert, and a
-  live filename preview. Verified end-to-end against the real WebView2 viewer.
-- Network-safe audit DB (History): rollback journal + busy_timeout, never WAL.
+  Processing → Done lifecycle, live inbox monitoring, set-aside alert, a live
+  filename preview, and **name autocomplete** (history ranked by recency then
+  frequency, seeded from `names.txt`). Verified end-to-end against the real
+  WebView2 viewer. Commit/skip/undo are guarded against reentrancy so a fast
+  double-press can never mislabel a document (regression-tested).
+- Network-safe audit DB (History): rollback journal + busy_timeout, never WAL,
+  with a **daily point-in-time backup** and **CSV export** (File menu).
 - PDF metadata tagging (PdfSharp), wired into commit/undo.
 - **Tools menu** — Unlock PDFs (decrypt in place or to a copy), Bulk rename
   (incl. the "Review files" transform + hand-editable preview), and Match &
