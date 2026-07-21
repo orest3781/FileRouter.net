@@ -388,7 +388,7 @@ public sealed class MainForm : Form
             MessageBox.Show($"Exported {count} rows to {dlg.FileName}", "FileRouter",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
-        catch (IOException ex)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             MessageBox.Show("Couldn't save it: " + ex.Message, "FileRouter",
                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -618,7 +618,8 @@ public sealed class MainForm : Form
     private void SaveMergeHeaders(Dictionary<string, string> headers)
     {
         _cfg.MergeHeaders = headers;
-        Config.Save(_cfg, _cfgPath);
+        if (!Config.TrySave(_cfg, _cfgPath, out var error))
+            Warn(error, "FileRouter — settings not saved");
     }
 
     private void OpenSettings()
@@ -636,7 +637,9 @@ public sealed class MainForm : Form
         var oldDb = ResolvePath(_cfg.HistoryDb, _cfgPath);
         var newDb = ResolvePath(cfg.HistoryDb, _cfgPath);
         _cfg = cfg;
-        Config.Save(cfg, _cfgPath);
+        // the new settings still apply in memory even if the file is read-only
+        if (!Config.TrySave(cfg, _cfgPath, out var error))
+            Warn(error, "FileRouter — settings not saved");
         if (!string.Equals(oldDb, newDb, StringComparison.OrdinalIgnoreCase))
         {
             _history.Dispose();

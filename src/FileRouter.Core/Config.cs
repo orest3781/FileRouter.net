@@ -88,6 +88,10 @@ public sealed class Config
         {
             throw new ConfigException($"Config file {path} is not valid JSON: {ex.Message}");
         }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new ConfigException($"Config file {path} could not be read: {ex.Message}");
+        }
         if (Array.IndexOf(Naming.Modes, cfg.NamingMode) < 0)
             throw new ConfigException(
                 $"naming_mode must be one of insert/replace, got \"{cfg.NamingMode}\"");
@@ -99,6 +103,20 @@ public sealed class Config
 
     public static void Save(Config cfg, string path) =>
         File.WriteAllText(path, JsonSerializer.Serialize(cfg, Opts) + "\n");
+
+    /// <summary>Save that reports failure instead of crashing the app — a
+    /// read-only or locked config file must never take the session down.</summary>
+    public static bool TrySave(Config cfg, string path, out string error)
+    {
+        try { Save(cfg, path); error = ""; return true; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+                                   or System.Security.SecurityException
+                                   or DirectoryNotFoundException)
+        {
+            error = $"Couldn't save settings to {path}: {ex.Message}";
+            return false;
+        }
+    }
 
     /// <summary>Readable error for one unusable destination, or "" if good.</summary>
     public static string ValidateRoute(Route route)

@@ -25,6 +25,16 @@ internal static class Program
             return;
         }
 
-        Application.Run(new MainForm(cfg, cfgPath));
+        // the MainForm ctor opens SQLite and takes the daily backup — a locked
+        // or corrupt history DB must fail with a dialog, not a silent crash
+        try
+        {
+            Application.Run(new MainForm(cfg, cfgPath));
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("FileRouter couldn't start:\n\n" + ex.Message,
+                "FileRouter", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 }
