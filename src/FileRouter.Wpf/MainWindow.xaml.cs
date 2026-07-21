@@ -22,6 +22,8 @@ public partial class MainWindow : Window
             new DialogRelay(() => Dialogs), _watch, SynchronizationContext.Current);
         DataContext = Shell;
 
+        Shell.RoutesRebuilt += RebindRouteHotkeys;
+
         Loaded += async (_, _) =>
         {
             if (!await _pdf.InitAsync())
@@ -34,6 +36,26 @@ public partial class MainWindow : Window
     }
 
     private void OnExit(object sender, RoutedEventArgs e) => Close();
+
+    private readonly List<System.Windows.Input.KeyBinding> _routeBindings = new();
+
+    /// <summary>Config-driven route hotkeys: rebuilt with the route buttons at
+    /// every session start (and after Settings changes).</summary>
+    private void RebindRouteHotkeys()
+    {
+        foreach (var b in _routeBindings) InputBindings.Remove(b);
+        _routeBindings.Clear();
+        foreach (var route in Shell.Routes)
+        {
+            if (route.Gesture is null || !route.Enabled) continue;
+            var binding = new System.Windows.Input.KeyBinding(Shell.RouteCommand, route.Gesture)
+            {
+                CommandParameter = route.Index,
+            };
+            _routeBindings.Add(binding);
+            InputBindings.Add(binding);
+        }
+    }
 
     /// <summary>Lets the smoke harness swap in a recording dialog service
     /// after construction without the view model holding a stale reference.</summary>

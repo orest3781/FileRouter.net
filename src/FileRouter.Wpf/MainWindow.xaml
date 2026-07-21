@@ -6,6 +6,11 @@
         Title="FileRouter" Width="1280" Height="860" MinWidth="900" MinHeight="600"
         WindowStartupLocation="CenterScreen"
         Style="{StaticResource {x:Type Window}}">
+    <Window.InputBindings>
+        <KeyBinding Key="K" Modifiers="Ctrl" Command="{Binding SkipCommand}" />
+        <KeyBinding Key="Z" Modifiers="Ctrl+Shift" Command="{Binding UndoCommand}" />
+        <KeyBinding Key="Escape" Command="{Binding StopCommand}" />
+    </Window.InputBindings>
     <DockPanel>
         <Menu DockPanel.Dock="Top" Padding="4,2">
             <MenuItem Header="_File">

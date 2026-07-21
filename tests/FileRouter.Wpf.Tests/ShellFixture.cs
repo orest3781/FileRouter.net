@@ -35,6 +35,7 @@ public sealed class ShellFixture : IDisposable
             Inbox = Inbox,
             Deferred = Deferred,
             Sort = "filename_asc",
+            TagWithRoute = false,   // fixture "PDFs" are text; tagging is covered by Core + smoke
             Routes = { new Route { Label = "Filed", Path = RouteDir, Color = "#2e7d32" } },
         };
         tweak?.Invoke(Cfg);
@@ -51,6 +52,14 @@ public sealed class ShellFixture : IDisposable
         var path = Path.Combine(Inbox, name);
         File.WriteAllText(path, content);
         return path;
+    }
+
+    /// <summary>Seed the completer's names file and point the config at it.</summary>
+    public void WriteNamesFile(params string[] names)
+    {
+        var path = Path.Combine(Dir, "names.txt");
+        File.WriteAllLines(path, names);
+        Cfg.NamesFile = path;
     }
 
     public void Dispose()

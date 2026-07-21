@@ -55,6 +55,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         StartCommand = new RelayCommand(StartProcessing, () => StartEnabled);
         RescanCommand = new RelayCommand(Rescan);
         OpenDeferredCommand = new RelayCommand(() => OpenFolder(_cfg.Deferred));
+        RouteCommand = new AsyncRelayCommand<int>(OnRouteAsync);
+        SkipCommand = new AsyncRelayCommand(OnSkipAsync);
+        UndoCommand = new RelayCommand(OnUndo, () => _session.CanUndo);
+        StopCommand = new RelayCommand(StopSession);
 
         _watch.Activity += OnFolderActivity;
     }
@@ -62,6 +66,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     internal Config Cfg => _cfg;
     internal Session Session => _session;
     internal History History => _history;
+
+    /// <summary>The view uses this to turn on TextBox CharacterCasing so
+    /// uppercase typing keeps the caret steady.</summary>
+    public bool UppercaseNames => _cfg.UppercaseNames;
 
     // ------------------------------------------------------------- screen
     private Screen _screen = Screen.Ready;
@@ -235,11 +243,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         }
     }
 
-    // ------------------------------------------------- processing (minimal)
-    // The filing loop (commit/skip/undo/preview) is built out in the
-    // processing-screen task; Start/advance/Done live here so every screen is
-    // reachable from the first shell commit onward.
-
+    // ------------------------------------------------------ processing state
     private string _progressLine = "";
     public string ProgressLine { get => _progressLine; private set => Set(ref _progressLine, value); }
 
@@ -249,20 +253,76 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private string _statusLine = "";
     public string StatusLine { get => _statusLine; internal set => Set(ref _statusLine, value); }
 
+    public ObservableCollection<RouteButtonViewModel> Routes { get; } = new();
+
+    /// <summary>Raised whenever the route set is rebuilt so the window can
+    /// re-register the hotkey bindings.</summary>
+    public event Action? RoutesRebuilt;
+
+    /// <summary>Raised when the name box should take focus (new document).</summary>
+    public event Action? RequestNameFocus;
+
+    public AsyncRelayCommand<int> RouteCommand { get; }
+    public AsyncRelayCommand SkipCommand { get; }
+    public RelayCommand UndoCommand { get; }
+    public RelayCommand StopCommand { get; }
+
+    private int? _lastRoute;
+    private bool _busy;   // cross-command reentrancy guard (commit/skip/undo)
+
+    private string _typedName = "";
+    public string TypedName
+    {
+        get => _typedName;
+        set
+        {
+            var polished = _cfg.UppercaseNames ? value.ToUpperInvariant() : value;
+            if (Set(ref _typedName, polished))
+            {
+                UpdatePreview();
+                RefreshSuggestions();
+            }
+            else if (polished != value)
+            {
+                Raise();   // the view's text differs from the polished value
+            }
+        }
+    }
+
+    private string _preview = "";
+    public string Preview { get => _preview; private set => Set(ref _preview, value); }
+
+    private bool _previewIsWarning;
+    public bool PreviewIsWarning { get => _previewIsWarning; private set => Set(ref _previewIsWarning, value); }
+
+    public bool CanUndo => _session.CanUndo;
+
     private void RaiseProgress() => ProgressLine = $"{_session.Pos + 1} / {_session.Total}";
 
     internal void StartProcessing()
     {
         var scan = Scanner.Scan(_cfg.Inbox, _cfg.Sort);
         if (scan.Count == 0) { Rescan(); return; }
+        BuildRoutes();
         _session.Start(scan.Matching);
+        _lastRoute = null;
         Screen = Screen.Processing;
         StatusLine = "";
         // hide the dashboard while filing
         DashboardVisible = false;
         StopFlash();
         ApplyFlashAll();
+        RefreshCompleter();
         _ = LoadCurrentAsync();
+    }
+
+    private void BuildRoutes()
+    {
+        Routes.Clear();
+        var p = _palette();
+        for (var i = 0; i < _cfg.Routes.Count; i++)
+            Routes.Add(new RouteButtonViewModel(i, _cfg.Routes[i], p));
+        RoutesRebuilt?.Invoke();
     }
 
     internal async Task LoadCurrentAsync()
@@ -271,7 +331,13 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         if (path is null) { ShowDone(); return; }
         RaiseProgress();
         CurrentFilename = Path.GetFileName(path);
+        _typedName = "";
+        Raise(nameof(TypedName));
+        RefreshSuggestions();
+        UpdatePreview();
+        RaiseUndoState();
         await _viewer.ShowAsync(path);
+        RequestNameFocus?.Invoke();
     }
 
     private void ShowDone()
@@ -281,6 +347,209 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         CountLine = "Session complete";
         DetailLine = $"{_session.Filed} filed, {_session.Skipped} set aside"
             + (_session.Vanished > 0 ? $", {_session.Vanished} vanished" : "");
+        RaiseUndoState();
+    }
+
+    private void RaiseUndoState()
+    {
+        Raise(nameof(CanUndo));
+        UndoCommand.RaiseCanExecuteChanged();
+    }
+
+    // ------------------------------------------------------------- actions
+    internal async Task OnRouteAsync(int index)
+    {
+        // _busy is set BEFORE the first await: without it, a fast second
+        // Enter/Ctrl+1 would start a second commit during ReleaseAsync's
+        // yield, capturing the same textbox text and mislabeling the next doc.
+        if (_busy || Screen != Screen.Processing || _session.Current is null
+            || index >= _cfg.Routes.Count) return;
+        if (Routes.Count > index && !Routes[index].Enabled) return;
+        _busy = true;
+        try
+        {
+            var typed = TypedName;
+            await _viewer.ReleaseAsync();
+            try
+            {
+                var outcome = _session.CommitCurrent(typed, _cfg.Routes[index]);
+                _lastRoute = index;
+                if (outcome.Vanished)
+                    StatusLine = "That file disappeared from the inbox — logged and moved on.";
+            }
+            catch (CommitError ex)
+            {
+                _dialogs.Warn(ex.Message, "FileRouter — couldn't file it");
+                await LoadCurrentAsync();   // reload the same doc; nothing moved
+                return;
+            }
+            RefreshDeferredAlert();
+            RefreshCompleter();   // the just-used name is now suggestable
+            await LoadCurrentAsync();
+        }
+        finally { _busy = false; }
+    }
+
+    internal async Task OnSkipAsync()
+    {
+        if (_busy || Screen != Screen.Processing || _session.Current is null) return;
+        _busy = true;
+        try
+        {
+            await _viewer.ReleaseAsync();
+            try
+            {
+                var outcome = _session.SkipCurrent();
+                if (outcome.Vanished)
+                    StatusLine = "That file disappeared from the inbox — logged and moved on.";
+            }
+            catch (CommitError ex)
+            {
+                _dialogs.Warn(ex.Message, "FileRouter — set-aside failed");
+            }
+            RefreshDeferredAlert();
+            await LoadCurrentAsync();
+        }
+        finally { _busy = false; }
+    }
+
+    internal void OnUndo()
+    {
+        if (_busy) return;
+        if (!_session.CanUndo) { StatusLine = "Nothing to undo."; return; }
+        _busy = true;
+        try
+        {
+            try
+            {
+                var (filed, original, warning) = _session.UndoLast();
+                StatusLine = warning.Length > 0
+                    ? warning
+                    : $"Undid {Path.GetFileName(filed)} → {Path.GetFileName(original)}";
+            }
+            catch (CommitError ex)
+            {
+                _dialogs.Warn(ex.Message, "FileRouter — undo failed");
+                return;
+            }
+            if (Screen == Screen.Done)   // undo from Done re-enters the session
+                Screen = Screen.Processing;
+            RefreshDeferredAlert();
+            RefreshCompleter();   // a reverted name may drop out of the suggestions
+            _ = LoadCurrentAsync();
+        }
+        finally { _busy = false; }
+    }
+
+    /// <summary>Enter files to the last-used route (when enabled in config).</summary>
+    public void OnEnter() => _ = OnEnterAsync();
+
+    internal Task OnEnterAsync()
+    {
+        if (Screen != Screen.Processing || !_cfg.EnterCommits) return Task.CompletedTask;
+        if (_lastRoute is { } i && i < _cfg.Routes.Count) return OnRouteAsync(i);
+        StatusLine = "Enter files to the last-used route — press a route button first.";
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Esc: back to Ready. Nothing is lost — the remaining queue
+    /// stays in the inbox.</summary>
+    internal void StopSession()
+    {
+        if (Screen != Screen.Processing || _busy) return;
+        StatusLine = "";
+        Rescan();
+    }
+
+    /// <summary>Live "will be filed as" preview — the same BuildTarget the
+    /// commit uses, so an illegal name (colon…) warns before the button.</summary>
+    private void UpdatePreview()
+    {
+        var current = _session.Current;
+        if (Screen != Screen.Processing || current is null)
+        {
+            Preview = "";
+            PreviewIsWarning = false;
+            return;
+        }
+        try
+        {
+            var route = _lastRoute is { } i && i < _cfg.Routes.Count ? _cfg.Routes[i] : null;
+            var result = Naming.BuildTarget(
+                Path.GetFileName(current), TypedName,
+                route?.NamingMode, _session.SessionMode,
+                route?.Suffix ?? "", route?.AppendSuffix ?? false,
+                _ => false);
+            Preview = result.Filename;
+            PreviewIsWarning = false;
+        }
+        catch (ArgumentException ex)
+        {
+            Preview = "⚠ " + ex.Message;
+            PreviewIsWarning = true;
+        }
+    }
+
+    // -------------------------------------------------------- autocomplete
+    private List<string> _allNames = new();
+
+    public ObservableCollection<string> Suggestions { get; } = new();
+
+    private void RefreshCompleter()
+    {
+        var seeds = Completer.LoadSeedNames(
+            string.IsNullOrWhiteSpace(_cfg.NamesFile) ? null : ResolvePath(_cfg.NamesFile, _cfgPath));
+        _allNames = Completer.Names(_history, seeds);
+        RefreshSuggestions();
+    }
+
+    private bool _hasSuggestions;
+    public bool HasSuggestions { get => _hasSuggestions; private set => Set(ref _hasSuggestions, value); }
+
+    /// <summary>Top prefix matches for the popup; empty box suggests nothing
+    /// (the ranked list would just be noise).</summary>
+    private void RefreshSuggestions()
+    {
+        Suggestions.Clear();
+        if (Screen == Screen.Processing && TypedName.Length > 0)
+        {
+            foreach (var name in _allNames
+                         .Where(n => n.StartsWith(TypedName, StringComparison.OrdinalIgnoreCase)
+                                     && !n.Equals(TypedName, StringComparison.OrdinalIgnoreCase))
+                         .Take(8))
+                Suggestions.Add(name);
+        }
+        HasSuggestions = Suggestions.Count > 0;
+    }
+
+    /// <summary>Close the popup (Esc / focus loss); it reopens on typing.</summary>
+    internal void DismissSuggestions()
+    {
+        Suggestions.Clear();
+        HasSuggestions = false;
+    }
+
+    /// <summary>Tab: complete the top suggestion one word at a time
+    /// (Python-parity muscle memory; Enter stays free to commit).</summary>
+    internal bool CompleteNextWord()
+    {
+        if (Suggestions.Count == 0) return false;
+        var full = Suggestions[0];
+        var len = TypedName.Length;
+        if (len >= full.Length) return false;
+        var start = len;
+        if (full[start] == ' ') start++;
+        var idx = full.IndexOf(' ', Math.Min(start, full.Length - 1));
+        TypedName = idx < 0 ? full : full[..idx];
+        return true;
+    }
+
+    /// <summary>Shift+Tab: drop the last completed word.</summary>
+    internal void DropLastWord()
+    {
+        var t = TypedName.TrimEnd();
+        var i = t.LastIndexOf(' ');
+        TypedName = i < 0 ? "" : t[..i];
     }
 
     // ------------------------------------------------------------- helpers
