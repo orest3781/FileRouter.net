@@ -18,6 +18,19 @@ public sealed class Route
     [JsonExtensionData] public Dictionary<string, System.Text.Json.JsonElement> Extras { get; set; } = new();
 }
 
+/// <summary>A folder shown as a tile on the Ready dashboard while it holds
+/// files — another process's work queue, a "failed" folder, etc.</summary>
+public sealed class WatchFolder
+{
+    [JsonPropertyName("label")] public string Label { get; set; } = "";
+    [JsonPropertyName("path")] public string Path { get; set; } = "";
+    [JsonPropertyName("recursive")] public bool Recursive { get; set; }
+    [JsonPropertyName("filetypes")] public string Filetypes { get; set; } = "";   // "pdf" or "pdf,txt"; blank = any
+    [JsonPropertyName("color")] public string? Color { get; set; }
+
+    [JsonExtensionData] public Dictionary<string, System.Text.Json.JsonElement> Extras { get; set; } = new();
+}
+
 /// <summary>config.json load/save/defaults/validation. Unknown top-level keys
 /// survive a load/save round trip (kept in <see cref="Extras"/>).</summary>
 public sealed class Config
@@ -41,6 +54,12 @@ public sealed class Config
 
     // Match & merge: which spreadsheet headers hold the names + the id
     [JsonPropertyName("merge_headers")] public Dictionary<string, string> MergeHeaders { get; set; } = new();
+
+    // Ready dashboard: monitored-folder tiles + filename alerts
+    [JsonPropertyName("watch_folders")] public List<WatchFolder> WatchFolders { get; set; } = new();
+    [JsonPropertyName("alert_texts")] public List<string> AlertTexts { get; set; } = new();
+    [JsonPropertyName("monitor_title")] public string MonitorTitle { get; set; } = "Monitored folders";
+    [JsonPropertyName("flash_alerts")] public bool FlashAlerts { get; set; } = true;
 
     [JsonExtensionData] public Dictionary<string, JsonElement> Extras { get; set; } = new();
 

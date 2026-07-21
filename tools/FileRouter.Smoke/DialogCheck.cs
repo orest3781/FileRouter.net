@@ -16,10 +16,11 @@ public static class DialogCheck
             try { using var d = new UnlockDialog(); _ = d.Handle; } catch (Exception ex) { errors.Add("Unlock: " + ex.Message); }
             try { using var d = new BulkRenameDialog(); _ = d.Handle; } catch (Exception ex) { errors.Add("BulkRename: " + ex.Message); }
             try { using var d = new MatchMergeDialog(new Config(), _ => { }); _ = d.Handle; } catch (Exception ex) { errors.Add("MatchMerge: " + ex.Message); }
+            try { using var d = new SettingsDialog(new Config()); _ = d.Handle; } catch (Exception ex) { errors.Add("Settings: " + ex.Message); }
         });
         t.SetApartmentState(ApartmentState.STA);
         t.Start(); t.Join();
-        if (errors.Count == 0) { Console.WriteLine("DIALOGS OK — all three construct cleanly"); return 0; }
+        if (errors.Count == 0) { Console.WriteLine("DIALOGS OK — all four construct cleanly"); return 0; }
         foreach (var e in errors) Console.WriteLine("DIALOG FAIL: " + e);
         return 1;
     }

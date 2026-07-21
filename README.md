@@ -76,6 +76,13 @@ Feature-complete for the core workflow; 159 unit tests + a UI smoke, all green.
   (incl. the "Review files" transform + hand-editable preview), and Match &
   merge (roster CSV matching + Control-ID merge, with an in-app triage viewer
   that opens each ambiguous PDF in Edge beside the candidate roster rows).
+- **Ready dashboard** — monitored-folder tiles (`watch_folders`) that appear
+  only while a folder holds matching files, colored, clickable, with a live
+  count; filename **alerts** (`alert_texts`) flash a tile (and the inbox count)
+  red until the file clears.
+- **Settings dialog** (File → Settings…) — edits every field, the routes
+  table, and the monitored-folders table, so first-time setup no longer means
+  hand-editing `config.json`.
 
-**Not yet ported:** a Settings dialog (config is edited by hand in
-`config.json` for now), and the Ready-screen "monitored folders" dashboard.
+The .NET app is now at feature parity with the Python original for the core
+workflow.

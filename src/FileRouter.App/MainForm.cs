@@ -15,10 +15,10 @@ namespace FileRouter.App;
 /// running queue at the tail, and the set-aside alert stays accurate.</summary>
 public sealed class MainForm : Form
 {
-    private readonly Config _cfg;
+    private Config _cfg;              // replaced by Settings
     private readonly string _cfgPath;
-    private readonly History _history;
-    private readonly Session _session;
+    private History _history;         // re-opened if history_db changes
+    private Session _session;
 
     private readonly WebView2 _viewer = new() { Dock = DockStyle.Fill };
     private readonly Label _progress = new() { AutoSize = true, Font = new Font("Segoe UI", 15, FontStyle.Bold) };
@@ -46,6 +46,13 @@ public sealed class MainForm : Form
     private bool _busy;   // reentrancy guard for commit/skip/undo
     private readonly AutoCompleteStringCollection _completer = new();
 
+    // Ready dashboard: monitored-folder tiles + alert flashing
+    private readonly Label _monitorTitle = new() { AutoSize = true, Font = new Font("Segoe UI", 10, FontStyle.Bold), Visible = false, Margin = new Padding(0, 10, 0, 2) };
+    private readonly FlowLayoutPanel _tiles = new() { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Visible = false };
+    private readonly System.Windows.Forms.Timer _flash = new() { Interval = 600 };
+    private bool _flashOn;
+    private bool _inboxAlerting;
+
     public MainForm(Config cfg, string cfgPath)
     {
         _cfg = cfg;
@@ -66,7 +73,7 @@ public sealed class MainForm : Form
         KeyPreview = true;
         BuildUi();
         KeyDown += OnKeyDown;
-        FormClosed += (_, _) => { _debounce.Dispose(); _poll.Dispose(); _history.Dispose(); };
+        FormClosed += (_, _) => { _debounce.Dispose(); _poll.Dispose(); _flash.Dispose(); _history.Dispose(); };
         Load += async (_, _) => await InitAsync();
     }
 
@@ -88,6 +95,8 @@ public sealed class MainForm : Form
         void Row(Control c) { panel.RowStyles.Add(new RowStyle(SizeType.AutoSize)); panel.Controls.Add(c); }
         Row(_progress);
         Row(_filename);
+        Row(_monitorTitle);
+        Row(_tiles);
         Row(new Label { Text = "Name:", AutoSize = true, Margin = new Padding(0, 8, 0, 0) });
         Row(_nameBox);
         Row(_preview);
@@ -118,6 +127,8 @@ public sealed class MainForm : Form
         tools.DropDownItems.Add("&Match and merge…", null, (_, _) =>
             new MatchMergeDialog(_cfg, SaveMergeHeaders).ShowDialog(this));
         var file = new ToolStripMenuItem("&File");
+        file.DropDownItems.Add("&Settings…", null, (_, _) => OpenSettings());
+        file.DropDownItems.Add(new ToolStripSeparator());
         file.DropDownItems.Add("&Export history to spreadsheet…", null, (_, _) => ExportHistory());
         menu.Items.Add(file);
         menu.Items.Add(tools);
@@ -163,6 +174,7 @@ public sealed class MainForm : Form
         _debounce.Tick += (_, _) => { _debounce.Stop(); OnFolderActivity(); };
         _poll.Tick += (_, _) => OnFolderActivity();
         _poll.Start();
+        _flash.Tick += (_, _) => { _flashOn = !_flashOn; ApplyFlash(); };
         Rescan();
     }
 
@@ -219,6 +231,92 @@ public sealed class MainForm : Form
             _deferredAlert.Text = $"⚠ {count} set-aside file{(count == 1 ? "" : "s")} waiting — click to open";
     }
 
+    // -------------------------------------------------------- dashboard tiles
+    /// <summary>Rebuild the monitored-folder tiles (shown on Ready only, and
+    /// only for folders holding files or in error), plus the inbox alert
+    /// state, and (re)start the flash timer if anything is alerting.</summary>
+    private void RefreshDashboard(Scanner.ScanResult inboxScan)
+    {
+        var statuses = FolderMonitor.All(_cfg.WatchFolders, _cfg.AlertTexts)
+            .Where(s => s.HasFiles || s.Error.Length > 0).ToList();
+
+        _tiles.Controls.Clear();
+        foreach (var s in statuses) _tiles.Controls.Add(MakeTile(s));
+
+        var show = !_processing && statuses.Count > 0;
+        _monitorTitle.Text = _cfg.MonitorTitle;
+        _monitorTitle.Visible = _tiles.Visible = show;
+
+        _inboxAlerting = inboxScan.Matching
+            .Any(f => FolderMonitor.IsAlerting(Path.GetFileName(f), _cfg.AlertTexts));
+
+        var anyAlert = _inboxAlerting || statuses.Any(s => s.Alerting);
+        if (anyAlert && _cfg.FlashAlerts) _flash.Start();
+        else { _flash.Stop(); _flashOn = false; }
+        ApplyFlash();
+    }
+
+    private Control MakeTile(FolderMonitor.FolderStatus s)
+    {
+        var (back, fore) = TileColors(s, flashing: false);
+        var tile = new Panel { Width = 320, Height = 38, Margin = new Padding(0, 2, 0, 2), Cursor = Cursors.Hand, Tag = s, BackColor = back };
+        var text = s.Error.Length > 0
+            ? $"{s.Label}: {s.Error}"
+            : $"{s.Label}: {s.Count}" + (s.Alerting ? "   ⚠" : "");
+        var lbl = new Label { Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(8, 0, 0, 0), ForeColor = fore, Text = text };
+        tile.Controls.Add(lbl);
+        var tip = TileTip(s);
+        var tooltip = new ToolTip();
+        tooltip.SetToolTip(tile, tip);
+        tooltip.SetToolTip(lbl, tip);
+        void Open(object? _1, EventArgs _2) => OpenFolder(s.Path);
+        tile.Click += Open;
+        lbl.Click += Open;
+        return tile;
+    }
+
+    private (Color Back, Color Fore) TileColors(FolderMonitor.FolderStatus s, bool flashing)
+    {
+        if (s.Alerting && (flashing || !_cfg.FlashAlerts))
+            return (Color.FromArgb(192, 57, 43), Color.White);   // steady/flash red
+        var back = SystemColors.ControlLight;
+        if (!string.IsNullOrEmpty(s.Color))
+        {
+            try { back = ColorTranslator.FromHtml(s.Color); } catch { /* native */ }
+        }
+        var lum = 0.299 * back.R + 0.587 * back.G + 0.114 * back.B;
+        return (back, lum > 150 ? Color.Black : Color.White);
+    }
+
+    private static string TileTip(FolderMonitor.FolderStatus s)
+    {
+        var lines = new List<string> { s.Path.Length > 0 ? s.Path : "(not set)" };
+        if (s.Error.Length > 0) lines.Add(s.Error);
+        if (s.Matches.Count > 0)
+        {
+            lines.Add("Alerts:");
+            lines.AddRange(s.Matches.Take(8).Select(m => "  " + m));
+            if (s.Matches.Count > 8) lines.Add($"  … +{s.Matches.Count - 8} more");
+        }
+        lines.Add("Click to open the folder");
+        return string.Join("\n", lines);
+    }
+
+    /// <summary>Recolor alerting tiles and the inbox count for the flash tick
+    /// (no rebuild — cheap enough to run twice a second).</summary>
+    private void ApplyFlash()
+    {
+        foreach (Control tile in _tiles.Controls)
+        {
+            if (tile.Tag is not FolderMonitor.FolderStatus s) continue;
+            var (back, fore) = TileColors(s, _flashOn);
+            tile.BackColor = back;
+            if (tile.Controls.Count > 0) tile.Controls[0].ForeColor = fore;
+        }
+        _progress.ForeColor = _inboxAlerting && (_flashOn || !_cfg.FlashAlerts)
+            ? Color.FromArgb(192, 57, 43) : SystemColors.ControlText;
+    }
+
     private static void OpenFolder(string folder)
     {
         if (!string.IsNullOrWhiteSpace(folder) && Directory.Exists(folder))
@@ -246,6 +344,7 @@ public sealed class MainForm : Form
         _start.Visible = _rescan.Visible = true;
         _start.Enabled = scan.Count > 0;
         _undo.Visible = false;
+        RefreshDashboard(scan);
     }
 
     internal void StartProcessing()
@@ -259,6 +358,9 @@ public sealed class MainForm : Form
         _nameBox.Visible = _preview.Visible = _routes.Visible = _skip.Visible = true;
         _undo.Visible = true;
         _start.Visible = _rescan.Visible = false;
+        // hide the dashboard while filing
+        _monitorTitle.Visible = _tiles.Visible = false;
+        _flash.Stop(); _flashOn = false; ApplyFlash();
         RefreshCompleter();
         LoadCurrent();
     }
@@ -517,6 +619,32 @@ public sealed class MainForm : Form
     {
         _cfg.MergeHeaders = headers;
         Config.Save(_cfg, _cfgPath);
+    }
+
+    private void OpenSettings()
+    {
+        using var dlg = new SettingsDialog(_cfg);
+        if (dlg.ShowDialog(this) == DialogResult.OK && dlg.Result is { } cfg)
+            ApplySettings(cfg);
+    }
+
+    /// <summary>Adopt a new config: re-open the DB if its path changed, rebuild
+    /// the session and watchers, save, and refresh the Ready view. Settings is
+    /// only reachable from Ready, so there is no live session to disturb.</summary>
+    private void ApplySettings(Config cfg)
+    {
+        var oldDb = ResolvePath(_cfg.HistoryDb, _cfgPath);
+        var newDb = ResolvePath(cfg.HistoryDb, _cfgPath);
+        _cfg = cfg;
+        Config.Save(cfg, _cfgPath);
+        if (!string.Equals(oldDb, newDb, StringComparison.OrdinalIgnoreCase))
+        {
+            _history.Dispose();
+            _history = new History(newDb);
+        }
+        _session = new Session(cfg, _history);
+        BuildWatchers();   // inbox/deferred may have changed
+        Rescan();          // refresh Ready + dashboard with the new config
     }
 
     // ------------------------------------------------- smoke-test surface
