@@ -1,0 +1,73 @@
+<Window x:Class="FileRouter.Wpf.Windows.UnlockWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="FileRouter — Unlock PDFs" Width="600" Height="620" MinWidth="520" MinHeight="520"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" AllowDrop="True"
+        DragOver="OnDragOver" Drop="OnDrop"
+        Style="{StaticResource {x:Type Window}}">
+    <DockPanel Margin="14">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right"
+                    Margin="0,10,0,0">
+            <Button Content="Unlock" Command="{Binding UnlockCommand}"
+                    Style="{StaticResource PrimaryButton}" Width="110" Margin="0,0,8,0" />
+            <Button Content="Close" Width="96" IsCancel="True" />
+        </StackPanel>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Text="PDFs to unlock (drag them here, or Add files…):" Margin="0,0,0,6" />
+            <ListBox Grid.Row="1" x:Name="FileList" ItemsSource="{Binding Files}"
+                     SelectionMode="Extended" MinHeight="120"
+                     AutomationProperties.Name="PDFs to unlock" />
+
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,8">
+                <Button Content="Add files…" Click="OnAddFiles" Margin="0,0,6,0" />
+                <Button Content="Remove selected" Click="OnRemoveSelected" Margin="0,0,6,0" />
+                <Button Content="Clear" Command="{Binding ClearCommand}" />
+            </StackPanel>
+
+            <Grid Grid.Row="3" Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="220" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Password:" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <PasswordBox Grid.Column="1" x:Name="PwBox" PasswordChanged="OnPasswordChanged"
+                             AutomationProperties.Name="Password" />
+                <TextBox Grid.Column="1" x:Name="PwPlain" Visibility="Collapsed"
+                         Text="{Binding Password, UpdateSourceTrigger=PropertyChanged}"
+                         AutomationProperties.Name="Password (visible)" />
+                <CheckBox Grid.Column="2" x:Name="ShowPw" Content="Show" Margin="8,0,0,0"
+                          VerticalAlignment="Center" Checked="OnShowPw" Unchecked="OnShowPw" />
+                <ComboBox Grid.Column="3" Margin="12,0,0,0" MinWidth="140"
+                          ItemsSource="{Binding Saved}" DisplayMemberPath="Label"
+                          SelectedItem="{Binding SelectedSaved}"
+                          AutomationProperties.Name="Saved passwords" />
+            </Grid>
+
+            <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,0,0,8">
+                <CheckBox Content="Keep a copy, don't touch the original"
+                          IsChecked="{Binding KeepCopy}" VerticalAlignment="Center" />
+                <TextBlock Text="Remember as:" VerticalAlignment="Center" Margin="18,0,6,0" />
+                <TextBox Width="150" Text="{Binding RememberLabel, UpdateSourceTrigger=PropertyChanged}"
+                         AutomationProperties.Name="Remember password as" />
+            </StackPanel>
+
+            <TextBlock Grid.Row="5" Text="Results:" Margin="0,0,0,4" />
+            <TextBox Grid.Row="6" Text="{Binding Results, Mode=OneWay}" IsReadOnly="True"
+                     TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" MinHeight="100"
+                     AutomationProperties.Name="Results" />
+        </Grid>
+    </DockPanel>
+</Window>

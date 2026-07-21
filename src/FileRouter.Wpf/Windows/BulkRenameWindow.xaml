@@ -1,0 +1,104 @@
+<Window x:Class="FileRouter.Wpf.Windows.BulkRenameWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="FileRouter — Bulk rename" Width="820" Height="640" MinWidth="700" MinHeight="520"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" AllowDrop="True"
+        DragOver="OnDragOver" Drop="OnDrop"
+        Style="{StaticResource {x:Type Window}}">
+    <DockPanel Margin="14">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,10,0,0">
+            <Button Content="{Binding RenameButtonText}" Command="{Binding RenameCommand}"
+                    Style="{StaticResource PrimaryButton}" MinWidth="130" Margin="0,0,8,0" />
+            <Button Content="Undo last rename" Command="{Binding UndoCommand}" Margin="0,0,8,0" />
+            <TextBlock Text="{Binding Status}" VerticalAlignment="Center"
+                       Style="{StaticResource StatusText}" MaxWidth="380" />
+            <Button Content="Close" Width="96" IsCancel="True" HorizontalAlignment="Right" />
+        </StackPanel>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                <CheckBox Content="Review files: rename to  &lt;received date&gt;-LAST-FIRST"
+                          IsChecked="{Binding ReviewMode}" VerticalAlignment="Center" />
+                <TextBlock Text="received:" VerticalAlignment="Center" Margin="12,0,6,0" />
+                <DatePicker SelectedDate="{Binding ReceivedDate}"
+                            IsEnabled="{Binding ReviewMode}" Width="130" />
+            </StackPanel>
+
+            <Grid Grid.Row="1" Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="170" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="170" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="150" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock Text="Find:" VerticalAlignment="Center" Margin="0,0,6,6" />
+                <TextBox Grid.Column="1" Margin="0,0,14,6"
+                         Text="{Binding Find, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Grid.Column="2" Text="Replace with:" VerticalAlignment="Center" Margin="0,0,6,6" />
+                <TextBox Grid.Column="3" Margin="0,0,14,6"
+                         Text="{Binding Replace, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Grid.Column="4" Text="Letter case:" VerticalAlignment="Center" Margin="0,0,6,6" />
+                <ComboBox Grid.Column="5" Margin="0,0,0,6" SelectedIndex="{Binding CaseIndex}">
+                    <ComboBoxItem Content="Keep case" />
+                    <ComboBoxItem Content="UPPERCASE" />
+                    <ComboBoxItem Content="lowercase" />
+                </ComboBox>
+                <TextBlock Grid.Row="1" Text="Add at start:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <TextBox Grid.Row="1" Grid.Column="1" Margin="0,0,14,0"
+                         Text="{Binding Prefix, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Grid.Row="1" Grid.Column="2" Text="Add at end:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <TextBox Grid.Row="1" Grid.Column="3" Margin="0,0,14,0"
+                         Text="{Binding Suffix, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
+
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
+                <Button Content="Add files…" Click="OnAddFiles" Margin="0,0,6,0" />
+                <Button Content="Add a folder's files…" Click="OnAddFolder" Margin="0,0,6,0" />
+                <Button Content="Clear" Command="{Binding ClearCommand}" />
+            </StackPanel>
+
+            <DataGrid Grid.Row="3" ItemsSource="{Binding Preview}" AutoGenerateColumns="False"
+                      CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column"
+                      CellEditEnding="OnCellEditEnding" SelectionMode="Single">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Current name" Binding="{Binding Current}"
+                                        IsReadOnly="True" Width="*" />
+                    <DataGridTextColumn Header="New name" Binding="{Binding NewName}" Width="*">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Changed}" Value="False">
+                                        <Setter Property="Foreground"
+                                                Value="{DynamicResource Theme.SubtleText}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Manual}" Value="True">
+                                        <Setter Property="FontWeight" Value="Bold" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="" Binding="{Binding Note}" IsReadOnly="True"
+                                        Width="220" />
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <TextBlock Grid.Row="4" Style="{StaticResource SubtleText}" Margin="0,6,0,0"
+                       Text="Double-click a New name to edit it by hand (clear it to go back). Extensions never change." />
+        </Grid>
+    </DockPanel>
+</Window>

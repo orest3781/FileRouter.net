@@ -23,9 +23,9 @@
                 <MenuItem Header="E_xit" Click="OnExit" />
             </MenuItem>
             <MenuItem Header="_Tools">
-                <MenuItem x:Name="MenuUnlock" Header="_Unlock PDFs…" IsEnabled="False" />
-                <MenuItem x:Name="MenuBulkRename" Header="_Bulk rename…" IsEnabled="False" />
-                <MenuItem x:Name="MenuMatchMerge" Header="_Match and merge…" IsEnabled="False" />
+                <MenuItem Header="_Unlock PDFs…" Click="OnUnlock" />
+                <MenuItem Header="_Bulk rename…" Click="OnBulkRename" />
+                <MenuItem Header="_Match and merge…" Click="OnMatchMerge" />
             </MenuItem>
         </Menu>
 

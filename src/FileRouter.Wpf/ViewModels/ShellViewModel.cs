@@ -461,6 +461,20 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// font resources and hotkey bindings).</summary>
     public event Action? SettingsApplied;
 
+    /// <summary>Persist the live config now (tool windows saving their own
+    /// state: merge headers, remembered passwords).</summary>
+    internal void SaveConfigNow()
+    {
+        if (!Config.TrySave(_cfg, _cfgPath, out var error))
+            _dialogs.Warn(error, "FileRouter — settings not saved");
+    }
+
+    internal void SaveMergeHeaders(Dictionary<string, string> headers)
+    {
+        _cfg.MergeHeaders = headers;
+        SaveConfigNow();
+    }
+
     /// <summary>Adopt a new config: re-open the DB if its path changed (with a
     /// fresh daily backup for the NEW db — a gap in the WinForms port), save
     /// (warning, not crashing, on a read-only file), rebuild watchers, refresh

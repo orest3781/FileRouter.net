@@ -45,6 +45,17 @@ public partial class MainWindow : Window
         new Windows.HistoryWindow(new ViewModels.HistoryViewModel(Shell.History, Dialogs))
         { Owner = this }.ShowDialog();
 
+    private void OnUnlock(object sender, RoutedEventArgs e) =>
+        new Windows.UnlockWindow(new UnlockViewModel(Shell.Cfg, Shell.SaveConfigNow))
+        { Owner = this }.ShowDialog();
+
+    private void OnBulkRename(object sender, RoutedEventArgs e) =>
+        new Windows.BulkRenameWindow(new BulkRenameViewModel()) { Owner = this }.ShowDialog();
+
+    private void OnMatchMerge(object sender, RoutedEventArgs e) =>
+        new Windows.MatchMergeWindow(new MatchMergeViewModel(
+            Shell.Cfg, Shell.SaveMergeHeaders, Dialogs)) { Owner = this }.ShowDialog();
+
     private void OnSettings(object sender, RoutedEventArgs e)
     {
         if (!Shell.IsReady)
