@@ -37,6 +37,10 @@ public partial class MainWindow : Window
 
     private void OnExit(object sender, RoutedEventArgs e) => Close();
 
+    private void OnViewHistory(object sender, RoutedEventArgs e) =>
+        new Windows.HistoryWindow(new ViewModels.HistoryViewModel(Shell.History, Dialogs))
+        { Owner = this }.ShowDialog();
+
     private readonly List<System.Windows.Input.KeyBinding> _routeBindings = new();
 
     /// <summary>Config-driven route hotkeys: rebuilt with the route buttons at
