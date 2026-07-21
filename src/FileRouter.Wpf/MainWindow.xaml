@@ -1,0 +1,56 @@
+<Window x:Class="FileRouter.Wpf.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        xmlns:views="clr-namespace:FileRouter.Wpf.Views"
+        Title="FileRouter" Width="1280" Height="860" MinWidth="900" MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        Style="{StaticResource {x:Type Window}}">
+    <DockPanel>
+        <Menu DockPanel.Dock="Top" Padding="4,2">
+            <MenuItem Header="_File">
+                <MenuItem x:Name="MenuSettings" Header="_Settings…" IsEnabled="False" />
+                <Separator />
+                <MenuItem x:Name="MenuHistory" Header="_View history…" IsEnabled="False" />
+                <MenuItem x:Name="MenuExport" Header="_Export history to spreadsheet…" IsEnabled="False" />
+                <Separator />
+                <MenuItem Header="E_xit" Click="OnExit" />
+            </MenuItem>
+            <MenuItem Header="_Tools">
+                <MenuItem x:Name="MenuUnlock" Header="_Unlock PDFs…" IsEnabled="False" />
+                <MenuItem x:Name="MenuBulkRename" Header="_Bulk rename…" IsEnabled="False" />
+                <MenuItem x:Name="MenuMatchMerge" Header="_Match and merge…" IsEnabled="False" />
+            </MenuItem>
+        </Menu>
+
+        <StatusBar DockPanel.Dock="Bottom" MinHeight="26">
+            <StatusBarItem>
+                <Button Command="{Binding OpenDeferredCommand}"
+                        Content="{Binding DeferredAlert}"
+                        Visibility="{Binding HasDeferred, Converter={StaticResource BoolToVis}}"
+                        Cursor="Hand" Background="Transparent" BorderThickness="0" Padding="4,0"
+                        Foreground="{DynamicResource Theme.StatusAmber}" FontWeight="SemiBold" />
+            </StatusBarItem>
+        </StatusBar>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="320" />
+                <ColumnDefinition Width="5" />
+                <ColumnDefinition Width="430" MinWidth="370" />
+            </Grid.ColumnDefinitions>
+            <wv2:WebView2 x:Name="Viewer" Grid.Column="0" />
+            <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch" ResizeBehavior="PreviousAndNext" />
+            <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          Background="{DynamicResource Theme.WindowBg}">
+                <Grid Margin="16,12">
+                    <views:ReadyView Visibility="{Binding IsReady, Converter={StaticResource BoolToVis}}" />
+                    <views:ProcessingView Visibility="{Binding IsProcessing, Converter={StaticResource BoolToVis}}" />
+                    <views:DoneView Visibility="{Binding IsDone, Converter={StaticResource BoolToVis}}" />
+                </Grid>
+            </ScrollViewer>
+        </Grid>
+    </DockPanel>
+</Window>

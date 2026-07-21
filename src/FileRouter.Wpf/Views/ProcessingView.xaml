@@ -1,0 +1,15 @@
+<UserControl x:Class="FileRouter.Wpf.Views.ProcessingView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel>
+        <TextBlock Text="{Binding ProgressLine}" Style="{StaticResource HeadlineText}" />
+        <TextBlock Text="{Binding CurrentFilename}" Style="{StaticResource SubtleText}"
+                   TextWrapping="Wrap" Margin="0,4,0,0" />
+
+        <!-- name box, preview, route buttons, set-aside/undo/stop land with
+             the filing-loop task -->
+
+        <TextBlock Text="{Binding StatusLine}" Style="{StaticResource StatusText}"
+                   Margin="0,12,0,0" />
+    </StackPanel>
+</UserControl>
