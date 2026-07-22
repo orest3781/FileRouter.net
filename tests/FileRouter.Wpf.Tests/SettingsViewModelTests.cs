@@ -165,6 +165,77 @@ public class SettingsViewModelTests : IDisposable
     }
 
     [Fact]
+    public void FilingExampleTracksModeCaseAndSeparator()
+    {
+        var vm = new SettingsViewModel(new Config { Inbox = _dir }, _dialogs);
+        Assert.Contains("20240115-SMITH JOHN-12345.pdf", vm.FilingExample);
+
+        vm.WordSeparator = "-";
+        Assert.Contains("20240115-SMITH-JOHN-12345.pdf", vm.FilingExample);
+
+        vm.InsertMode = false;
+        Assert.Contains("SMITH-JOHN.pdf", vm.FilingExample);
+
+        vm.UppercaseNames = false;
+        Assert.Contains("Smith-John.pdf", vm.FilingExample);
+    }
+
+    [Fact]
+    public void FilingExampleWarnsOnAnIllegalSeparatorInsteadOfThrowing()
+    {
+        var vm = new SettingsViewModel(new Config { Inbox = _dir }, _dialogs)
+        { WordSeparator = ":" };
+        Assert.StartsWith("⚠", vm.FilingExample);
+    }
+
+    [Fact]
+    public void DuplicateHotkeyGetsALiveNote()
+    {
+        var cfg = new Config
+        {
+            Routes =
+            {
+                new Route { Label = "Invoices", Path = _dir },          // fallback Ctrl+1
+                new Route { Label = "Statements", Path = _dir, Hotkey = "Ctrl+2" },
+            },
+        };
+        var vm = new SettingsViewModel(cfg, _dialogs);
+        Assert.Equal("", vm.Routes[1].HotkeyNote);
+
+        vm.Routes[1].Hotkey = "Ctrl+1";   // now collides with route 0's fallback
+        Assert.Contains("already used by \"Invoices\"", vm.Routes[1].HotkeyNote);
+        Assert.True(vm.Routes[1].HasHotkeyNote);
+
+        vm.Routes[1].Hotkey = "Ctrl+2";
+        Assert.Equal("", vm.Routes[1].HotkeyNote);
+    }
+
+    [Fact]
+    public void RoutePreviewMatchesTheProcessingButtonComposition()
+    {
+        var cfg = new Config
+        {
+            Routes =
+            {
+                new Route
+                {
+                    Label = "Invoices", Path = _dir, Color = "#2e7d32",
+                    Suffix = "_INVOICE", AppendSuffix = true,
+                },
+            },
+        };
+        var vm = new SettingsViewModel(cfg, _dialogs);
+        var r = vm.Routes[0];
+        Assert.Equal("Invoices   ·   _INVOICE   ·   Ctrl+1", r.PreviewLabel);
+        Assert.Equal(new FileRouter.Wpf.Theme.Rgb(46, 125, 50), r.PreviewBack);
+        Assert.True(FileRouter.Wpf.Theme.ThemePalette.ContrastRatio(
+            r.PreviewFore, r.PreviewBack) >= 4.5);
+
+        r.AppendSuffix = false;   // live: suffix drops out of the preview
+        Assert.Equal("Invoices   ·   Ctrl+1", r.PreviewLabel);
+    }
+
+    [Fact]
     public void HistoryDbBrowseUsesTheOpenStylePicker()
     {
         var vm = new SettingsViewModel(new Config { Inbox = _dir }, _dialogs);

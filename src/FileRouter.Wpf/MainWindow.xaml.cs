@@ -173,7 +173,7 @@ public partial class MainWindow : Window
                 "FileRouter");
             return;
         }
-        var vm = new SettingsViewModel(Shell.Cfg, Dialogs);
+        var vm = new SettingsViewModel(Shell.Cfg, Dialogs, () => Theme.ThemeManager.Current);
         var win = new Windows.SettingsWindow(vm) { Owner = this };
         if (win.ShowDialog() == true && vm.Result is { } cfg)
             Shell.ApplySettings(cfg);

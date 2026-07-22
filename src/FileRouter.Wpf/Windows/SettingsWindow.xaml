@@ -105,10 +105,17 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="16,8">
                         <TextBlock Text="Naming" FontWeight="Bold" Margin="0,0,0,10" />
-                        <RadioButton Content="Keep date + ID  (20240115-SMITH JOHN-12345.pdf)"
+                        <RadioButton Content="Keep date + ID — the typed name goes between them"
                                      IsChecked="{Binding InsertMode}" />
-                        <RadioButton Content="Name only  (SMITH JOHN.pdf)"
+                        <RadioButton Content="Name only — the typed name becomes the whole filename"
                                      IsChecked="{Binding InsertMode, Converter={StaticResource InvertBool}}" />
+                        <!-- one live example tying mode + UPPERCASE + separator together -->
+                        <Border Background="{DynamicResource Theme.Surface}"
+                                BorderBrush="{DynamicResource Theme.Border}" BorderThickness="1"
+                                CornerRadius="4" Padding="10,7" Margin="0,8,0,0">
+                            <TextBlock Text="{Binding FilingExample}" TextWrapping="Wrap"
+                                       FontWeight="SemiBold" />
+                        </Border>
 
                         <Grid Style="{StaticResource FieldRow}" Margin="0,14,0,10">
                             <Grid.ColumnDefinitions>
@@ -166,8 +173,28 @@
                             <Button Content="↓" Command="{Binding RouteDownCommand}" MinWidth="34"
                                     ToolTip="Move down — buttons show in this order" />
                         </StackPanel>
-                        <ListBox ItemsSource="{Binding Routes}" SelectedItem="{Binding SelectedRoute}"
-                                 DisplayMemberPath="Label" />
+                        <Grid>
+                            <ListBox ItemsSource="{Binding Routes}" SelectedItem="{Binding SelectedRoute}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Rectangle Width="12" Height="12" RadiusX="2" RadiusY="2"
+                                                       VerticalAlignment="Center" Margin="0,0,7,0"
+                                                       Fill="{Binding Color, Converter={StaticResource ColorStringToBrush}}"
+                                                       Stroke="{DynamicResource Theme.Border}" StrokeThickness="1" />
+                                            <TextBlock Text="{Binding Label}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            <TextBlock Text="No destination buttons yet — press Add."
+                                       Style="{StaticResource SubtleText}" TextWrapping="Wrap"
+                                       Margin="10" IsHitTestVisible="False">
+                                <TextBlock.Visibility>
+                                    <Binding Path="Routes.Count" Converter="{StaticResource ZeroToVis}" />
+                                </TextBlock.Visibility>
+                            </TextBlock>
+                        </Grid>
                     </DockPanel>
 
                     <ScrollViewer Grid.Column="1" Margin="16,0,0,0" VerticalScrollBarVisibility="Auto"
@@ -222,6 +249,9 @@
                                            TextWrapping="Wrap"
                                            Text="press the keys · Backspace clears" />
                             </Grid>
+                            <TextBlock Text="{Binding HotkeyNote}" Style="{StaticResource StatusText}"
+                                       Margin="110,0,0,10"
+                                       Visibility="{Binding HasHotkeyNote, Converter={StaticResource BoolToVis}}" />
 
                             <Grid Style="{StaticResource FieldRow}">
                                 <Grid.ColumnDefinitions>
@@ -230,7 +260,8 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Text="Filename suffix:" Style="{StaticResource FieldLabel}" />
-                                <TextBox Grid.Column="1" Text="{Binding Suffix, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBox Grid.Column="1" Text="{Binding Suffix, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEnabled="{Binding AppendSuffix}" />
                                 <CheckBox Grid.Column="2" Content="append it" Margin="8,0,0,0"
                                           VerticalAlignment="Center" IsChecked="{Binding AppendSuffix}" />
                             </Grid>
@@ -267,14 +298,38 @@
                                     <DataTemplate>
                                         <Button Style="{StaticResource Swatch}" Click="OnRouteSwatch"
                                                 Tag="{Binding}" ToolTip="{Binding}"
-                                                AutomationProperties.Name="{Binding}">
+                                                AutomationProperties.Name="{Binding}"
+                                                Foreground="{Binding Converter={StaticResource ColorStringToForeBrush}}">
                                             <Button.Background>
                                                 <SolidColorBrush Color="{Binding}" />
                                             </Button.Background>
+                                            <!-- ✓ marks the swatch matching the current color -->
+                                            <TextBlock FontWeight="Bold">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{StaticResource SwatchCheck}">
+                                                        <Binding />
+                                                        <Binding Path="DataContext.SelectedRoute.Color"
+                                                                 RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
                                         </Button>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+
+                            <!-- the button exactly as the Processing screen
+                                 will render it: color, contrast-picked text,
+                                 label · suffix · hotkey -->
+                            <TextBlock Text="Preview:" Style="{StaticResource FieldLabel}"
+                                       Margin="0,14,0,4" />
+                            <Border Height="44" CornerRadius="4"
+                                    Background="{Binding PreviewBack, Converter={StaticResource RgbToBrush}}">
+                                <TextBlock Text="{Binding PreviewLabel}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="{Binding PreviewFore, Converter={StaticResource RgbToBrush}}" />
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>

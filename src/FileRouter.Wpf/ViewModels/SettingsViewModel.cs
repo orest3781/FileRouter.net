@@ -36,6 +36,33 @@ public sealed class RouteEditVm : ObservableObject
     public string Problem => Config.ValidateRoute(new Route { Path = Path });
     public bool ColorValid => Color.Length == 0 || ThemePalette.ParseColor(Color) is not null;
 
+    // Derived by SettingsViewModel.RecomputeRouteDerived (it knows the route's
+    // position, which decides the Ctrl+1-9 fallback and duplicate detection).
+    private string _previewLabel = "";
+    public string PreviewLabel { get => _previewLabel; private set => Set(ref _previewLabel, value); }
+
+    private Rgb _previewBack;
+    public Rgb PreviewBack { get => _previewBack; private set => Set(ref _previewBack, value); }
+
+    private Rgb _previewFore;
+    public Rgb PreviewFore { get => _previewFore; private set => Set(ref _previewFore, value); }
+
+    private string _hotkeyNote = "";
+    public string HotkeyNote
+    {
+        get => _hotkeyNote;
+        private set { if (Set(ref _hotkeyNote, value)) Raise(nameof(HasHotkeyNote)); }
+    }
+    public bool HasHotkeyNote => HotkeyNote.Length > 0;
+
+    internal void SetDerived(string previewLabel, Rgb back, Rgb fore, string hotkeyNote)
+    {
+        PreviewLabel = previewLabel;
+        PreviewBack = back;
+        PreviewFore = fore;
+        HotkeyNote = hotkeyNote;
+    }
+
     /// <summary>Unknown per-route keys from the original config, carried
     /// through so a hand-edited key survives Settings-OK.</summary>
     public Dictionary<string, JsonElement> Extras { get; init; } = new();
@@ -162,13 +189,16 @@ public sealed class SettingsViewModel : ObservableObject
 
     private readonly Config _original;
     private readonly IDialogService _dialogs;
+    private readonly Func<ThemePalette> _palette;
 
     public Config? Result { get; private set; }
 
-    public SettingsViewModel(Config current, IDialogService dialogs)
+    public SettingsViewModel(Config current, IDialogService dialogs,
+        Func<ThemePalette>? palette = null)
     {
         _original = current;
         _dialogs = dialogs;
+        _palette = palette ?? (() => ThemePalette.Light);
 
         Inbox = current.Inbox;
         Deferred = current.Deferred;
@@ -239,6 +269,61 @@ public sealed class SettingsViewModel : ObservableObject
         SelectedRoute = Routes.FirstOrDefault();
         SelectedWatch = WatchFolders.FirstOrDefault();
         SelectedPassword = Passwords.FirstOrDefault();
+
+        // live route previews + duplicate-hotkey notes: recompute whenever a
+        // route field or the route order changes
+        foreach (var r in Routes) HookRoute(r);
+        Routes.CollectionChanged += (_, e) =>
+        {
+            if (e.NewItems is not null)
+                foreach (RouteEditVm r in e.NewItems) HookRoute(r);
+            RecomputeRouteDerived();
+        };
+        RecomputeRouteDerived();
+    }
+
+    private void HookRoute(RouteEditVm r) =>
+        r.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(RouteEditVm.Label) or nameof(RouteEditVm.Hotkey)
+                or nameof(RouteEditVm.Suffix) or nameof(RouteEditVm.AppendSuffix)
+                or nameof(RouteEditVm.Color))
+                RecomputeRouteDerived();
+        };
+
+    /// <summary>What each route button will actually look like and answer to —
+    /// the same composition rules the Processing screen uses — plus a live
+    /// "already used by" note the moment two routes claim one keystroke.</summary>
+    private void RecomputeRouteDerived()
+    {
+        var p = _palette();
+        var claimed = new Dictionary<string, string>();
+        for (var i = 0; i < Routes.Count; i++)
+        {
+            var r = Routes[i];
+            var gesture = HotkeyParser.ToGesture(r.Hotkey)
+                ?? (i < 9 ? new System.Windows.Input.KeyGesture(
+                        System.Windows.Input.Key.D1 + i,
+                        System.Windows.Input.ModifierKeys.Control) : null);
+            var gestureText = gesture is null ? "" : HotkeyParser.Display(gesture);
+
+            var note = "";
+            if (gestureText.Length > 0)
+            {
+                if (claimed.TryGetValue(gestureText, out var other))
+                    note = $"{gestureText} is already used by \"{other}\"";
+                else
+                    claimed[gestureText] = r.Label.Trim();
+            }
+
+            var custom = ThemePalette.ParseColor(r.Color);
+            var back = custom ?? p.Surface;
+            var fore = custom is { } c ? ThemePalette.IdealForeground(c) : p.Text;
+            var label = r.Label
+                + (r.AppendSuffix && r.Suffix.Length > 0 ? $"   ·   {r.Suffix}" : "")
+                + (gestureText.Length > 0 ? $"   ·   {gestureText}" : "");
+            r.SetDerived(label, back, fore, note);
+        }
     }
 
     // ------------------------------------------------------------- scalars
@@ -258,7 +343,11 @@ public sealed class SettingsViewModel : ObservableObject
     public string MonitorTitle { get => _monitorTitle; set => Set(ref _monitorTitle, value); }
 
     private bool _insertMode;
-    public bool InsertMode { get => _insertMode; set => Set(ref _insertMode, value); }
+    public bool InsertMode
+    {
+        get => _insertMode;
+        set { if (Set(ref _insertMode, value)) Raise(nameof(FilingExample)); }
+    }
 
     private string _sortKey = "size_desc";
     public string SortKey { get => _sortKey; set => Set(ref _sortKey, value); }
@@ -267,10 +356,43 @@ public sealed class SettingsViewModel : ObservableObject
     public bool EnterCommits { get => _enterCommits; set => Set(ref _enterCommits, value); }
 
     private bool _uppercaseNames;
-    public bool UppercaseNames { get => _uppercaseNames; set => Set(ref _uppercaseNames, value); }
+    public bool UppercaseNames
+    {
+        get => _uppercaseNames;
+        set { if (Set(ref _uppercaseNames, value)) Raise(nameof(FilingExample)); }
+    }
 
     private string _wordSeparator = "";
-    public string WordSeparator { get => _wordSeparator; set => Set(ref _wordSeparator, value); }
+    public string WordSeparator
+    {
+        get => _wordSeparator;
+        set { if (Set(ref _wordSeparator, value)) Raise(nameof(FilingExample)); }
+    }
+
+    /// <summary>One live example tying mode + UPPERCASE + separator together —
+    /// exactly what a fax from Smith John would file as with these settings.</summary>
+    public string FilingExample
+    {
+        get
+        {
+            var name = "Smith John";
+            if (UppercaseNames) name = name.ToUpperInvariant();
+            if (WordSeparator.Length > 0 && !WordSeparator.Contains(' '))
+                name = name.Replace(" ", WordSeparator);
+            try
+            {
+                var result = Naming.BuildTarget(
+                    "20240115--12345.pdf", name,
+                    routeMode: null, globalMode: InsertMode ? "insert" : "replace",
+                    routeSuffix: "", appendSuffix: false, exists: _ => false);
+                return $"A fax typed as \"Smith John\" files as:  {result.Filename}";
+            }
+            catch (ArgumentException ex)
+            {
+                return "⚠ " + ex.Message;
+            }
+        }
+    }
 
     private bool _tagWithRoute;
     public bool TagWithRoute { get => _tagWithRoute; set => Set(ref _tagWithRoute, value); }
