@@ -28,15 +28,33 @@
             </MenuItem>
         </Menu>
 
-        <StatusBar DockPanel.Dock="Bottom" MinHeight="26">
-            <StatusBarItem>
-                <Button Command="{Binding OpenDeferredCommand}"
-                        Content="{Binding DeferredAlert}"
-                        Visibility="{Binding HasDeferred, Converter={StaticResource BoolToVis}}"
-                        Cursor="Hand" Background="Transparent" BorderThickness="0" Padding="4,0"
-                        Foreground="{DynamicResource Theme.StatusAmber}" FontWeight="SemiBold" />
-            </StatusBarItem>
-        </StatusBar>
+        <!-- set-aside banner: a full-width filled warning bar on every screen
+             while deferred files exist — the old thin status-bar text was too
+             easy to miss. Clicking opens the folder. -->
+        <Button DockPanel.Dock="Bottom"
+                Command="{Binding OpenDeferredCommand}"
+                Visibility="{Binding HasDeferred, Converter={StaticResource BoolToVis}}"
+                Cursor="Hand" FontWeight="SemiBold" FontSize="15"
+                AutomationProperties.Name="{Binding DeferredAlert}">
+            <Button.Template>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bar" Background="{DynamicResource Theme.Warning}"
+                            Padding="14,11" SnapsToDevicePixels="True">
+                        <TextBlock Text="{Binding DeferredAlert}"
+                                   Foreground="{DynamicResource Theme.WarningText}"
+                                   HorizontalAlignment="Center" TextWrapping="Wrap" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bar" Property="Opacity" Value="0.9" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bar" Property="Opacity" Value="0.8" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Button.Template>
+        </Button>
 
         <Grid>
             <Grid.ColumnDefinitions>
