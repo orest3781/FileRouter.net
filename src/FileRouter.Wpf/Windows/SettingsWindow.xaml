@@ -28,12 +28,16 @@
         <Style x:Key="SectionTab" TargetType="TabItem" BasedOn="{StaticResource {x:Type TabItem}}">
             <Setter Property="MinWidth" Value="120" />
         </Style>
+        <!-- 22px + 3px gap keeps all 12 swatches on ONE row in the detail
+             columns (12 × 25 = 300px); at 24 + 4 they wrapped and the second
+             row clipped against the editor's bottom edge -->
         <Style x:Key="Swatch" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Width" Value="24" />
-            <Setter Property="Height" Value="24" />
-            <Setter Property="Margin" Value="0,0,4,4" />
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Margin" Value="0,0,3,3" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Padding" Value="0" />
+            <Setter Property="FontSize" Value="11" />
         </Style>
     </Window.Resources>
 
@@ -302,7 +306,7 @@
                                 <TextBox Grid.Column="1" Text="{Binding Color, UpdateSourceTrigger=PropertyChanged}" />
                             </Grid>
                             <ItemsControl ItemsSource="{x:Static vm:SettingsViewModel.SwatchColors}"
-                                          Margin="110,0,0,0">
+                                          Margin="110,2,0,0">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
                                         <WrapPanel />
@@ -368,7 +372,7 @@
                         <TextBox Grid.Column="1" Text="{Binding MonitorTitle, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>
 
-                    <TextBlock Grid.Row="1" Text="Monitored folders" FontWeight="Bold" Margin="0,10,0,8" />
+                    <TextBlock Grid.Row="1" Text="Monitored folders" FontWeight="Bold" Margin="0,14,0,8" />
                     <!-- the folder editor takes all remaining height — a long
                          folder list gets the space, not a cramped fixed strip -->
                     <Grid Grid.Row="2">
@@ -439,7 +443,7 @@
                                     <TextBox Grid.Column="1" Text="{Binding Color, UpdateSourceTrigger=PropertyChanged}" />
                                 </Grid>
                                 <ItemsControl ItemsSource="{x:Static vm:SettingsViewModel.SwatchColors}"
-                                              Margin="90,0,0,0">
+                                              Margin="90,2,0,8">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
                                             <WrapPanel />
