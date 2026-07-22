@@ -65,6 +65,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     }
 
     internal Config Cfg => _cfg;
+    internal string CfgPath => _cfgPath;
     internal Session Session => _session;
     internal History History => _history;
 

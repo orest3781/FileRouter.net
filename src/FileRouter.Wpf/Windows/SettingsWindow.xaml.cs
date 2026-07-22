@@ -65,6 +65,12 @@ public partial class SettingsWindow : Window
             r.Color = color;
     }
 
+    private void OnWatchSwatch(object sender, RoutedEventArgs e)
+    {
+        if (_vm.SelectedWatch is { } w && sender is Button { Tag: string color })
+            w.Color = color;
+    }
+
     private void OnSizeUp(object sender, RoutedEventArgs e) => NudgeSize(+1);
     private void OnSizeDown(object sender, RoutedEventArgs e) => NudgeSize(-1);
 
@@ -78,7 +84,12 @@ public partial class SettingsWindow : Window
 
     private void OnAddPassword(object sender, RoutedEventArgs e)
     {
-        _vm.AddPassword(NewPwLabel.Text, NewPwValue.Password);
+        if (!_vm.AddPassword(NewPwLabel.Text, NewPwValue.Password))
+        {
+            PwHint.Text = "Give it a name and a password first.";
+            return;
+        }
+        PwHint.Text = "";
         NewPwLabel.Text = "";
         NewPwValue.Password = "";
     }

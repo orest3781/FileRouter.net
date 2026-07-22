@@ -249,6 +249,58 @@ public class SettingsViewModelTests : IDisposable
     }
 
     [Fact]
+    public void PathNotesSurfaceProblemsLive()
+    {
+        var vm = new SettingsViewModel(new Config(), _dialogs);
+        Assert.Contains("no inbox folder set", vm.InboxNote);
+
+        vm.Inbox = Path.Combine(_dir, "missing");
+        Assert.Contains("doesn't exist", vm.InboxNote);
+
+        vm.Inbox = _dir;
+        Assert.Equal("", vm.InboxNote);
+
+        vm.HistoryDb = "history.sqlite";
+        Assert.Contains("relative", vm.HistoryDbNote);
+        vm.HistoryDb = Path.Combine(_dir, "new-audit.sqlite");
+        Assert.Contains("new database will be created", vm.HistoryDbNote);
+    }
+
+    [Fact]
+    public void WatchFoldersReorderWithTheCommands()
+    {
+        var cfg = new Config
+        {
+            Inbox = _dir,
+            WatchFolders =
+            {
+                new WatchFolder { Label = "A", Path = _dir },
+                new WatchFolder { Label = "B", Path = _dir },
+            },
+        };
+        var vm = new SettingsViewModel(cfg, _dialogs);
+        vm.SelectedWatch = vm.WatchFolders[1];
+        Assert.False(vm.WatchDownCommand.CanExecute(null));
+        Assert.True(vm.WatchUpCommand.CanExecute(null));
+
+        vm.WatchUpCommand.Execute(null);
+        Assert.Equal("B", vm.WatchFolders[0].Label);
+        Assert.True(vm.TryBuildResult());
+        Assert.Equal(new[] { "B", "A" }, vm.Result!.WatchFolders.Select(w => w.Label));
+    }
+
+    [Fact]
+    public void AddPasswordRefusesBlankFields()
+    {
+        var vm = new SettingsViewModel(new Config { Inbox = _dir }, _dialogs);
+        Assert.False(vm.AddPassword("", "secret"));
+        Assert.False(vm.AddPassword("Payer", ""));
+        Assert.Empty(vm.Passwords);
+        Assert.True(vm.AddPassword("Payer", "secret"));
+        Assert.Single(vm.Passwords);
+    }
+
+    [Fact]
     public void ThemeModeRoundTripsThroughTheRadiosIntoTheResult()
     {
         var vm = new SettingsViewModel(new Config { Inbox = _dir }, _dialogs);

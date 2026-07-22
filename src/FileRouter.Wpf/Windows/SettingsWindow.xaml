@@ -16,6 +16,15 @@
         <Style x:Key="FieldRow" TargetType="Grid">
             <Setter Property="Margin" Value="0,0,0,10" />
         </Style>
+        <!-- per-field live note: amber, collapsed while empty -->
+        <Style x:Key="NoteText" TargetType="TextBlock" BasedOn="{StaticResource StatusText}">
+            <Setter Property="Margin" Value="130,-6,0,10" />
+            <Style.Triggers>
+                <Trigger Property="Text" Value="">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
         <Style x:Key="SectionTab" TargetType="TabItem" BasedOn="{StaticResource {x:Type TabItem}}">
             <Setter Property="MinWidth" Value="120" />
         </Style>
@@ -56,6 +65,7 @@
                             <Button Grid.Column="2" Content="Browse…" Margin="6,0,0,0"
                                     Command="{Binding BrowseInboxCommand}" />
                         </Grid>
+                        <TextBlock Text="{Binding InboxNote}" Style="{StaticResource NoteText}" />
 
                         <Grid Style="{StaticResource FieldRow}">
                             <Grid.ColumnDefinitions>
@@ -68,6 +78,7 @@
                             <Button Grid.Column="2" Content="Browse…" Margin="6,0,0,0"
                                     Command="{Binding BrowseDeferredCommand}" />
                         </Grid>
+                        <TextBlock Text="{Binding DeferredNote}" Style="{StaticResource NoteText}" />
 
                         <TextBlock Text="Files" FontWeight="Bold" Margin="0,10,0,10" />
 
@@ -82,6 +93,7 @@
                             <Button Grid.Column="2" Content="Browse…" Margin="6,0,0,0"
                                     Command="{Binding BrowseNamesFileCommand}" />
                         </Grid>
+                        <TextBlock Text="{Binding NamesFileNote}" Style="{StaticResource NoteText}" />
 
                         <Grid Style="{StaticResource FieldRow}">
                             <Grid.ColumnDefinitions>
@@ -94,8 +106,14 @@
                             <Button Grid.Column="2" Content="Browse…" Margin="6,0,0,0"
                                     Command="{Binding BrowseHistoryDbCommand}" />
                         </Grid>
-                        <TextBlock Style="{StaticResource SubtleText}" TextWrapping="Wrap"
-                                   Text="A daily backup of the history database is kept in a 'backups' folder beside it." />
+                        <TextBlock Text="{Binding HistoryDbNote}" Style="{StaticResource NoteText}" />
+                        <DockPanel Margin="0,2,0,0">
+                            <Button DockPanel.Dock="Right" Content="Open backups folder"
+                                    Command="{Binding OpenBackupsCommand}" Margin="8,0,0,0"
+                                    VerticalAlignment="Top" />
+                            <TextBlock Style="{StaticResource SubtleText}" TextWrapping="Wrap"
+                                       Text="A daily backup of the history database is kept in a 'backups' folder beside it." />
+                        </DockPanel>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -359,13 +377,17 @@
                          folder list gets the space, not a cramped fixed strip -->
                     <Grid Grid.Row="2">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="200" />
+                                <ColumnDefinition Width="230" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <DockPanel>
                                 <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
                                     <Button Content="Add" Command="{Binding AddWatchCommand}" MinWidth="52" Margin="0,0,4,0" />
-                                    <Button Content="Remove" Command="{Binding RemoveWatchCommand}" />
+                                    <Button Content="Remove" Command="{Binding RemoveWatchCommand}" Margin="0,0,4,0" />
+                                    <Button Content="↑" Command="{Binding WatchUpCommand}" MinWidth="34" Margin="0,0,4,0"
+                                            ToolTip="Move up — tiles show in this order" />
+                                    <Button Content="↓" Command="{Binding WatchDownCommand}" MinWidth="34"
+                                            ToolTip="Move down — tiles show in this order" />
                                 </StackPanel>
                                 <ListBox ItemsSource="{Binding WatchFolders}" SelectedItem="{Binding SelectedWatch}"
                                          DisplayMemberPath="Label" />
@@ -409,7 +431,8 @@
                                     <TextBlock Text="File types:" Style="{StaticResource FieldLabel}" />
                                     <TextBox Grid.Column="1" Text="{Binding Filetypes, UpdateSourceTrigger=PropertyChanged}" />
                                     <CheckBox Grid.Column="2" Content="include subfolders" Margin="8,0,0,0"
-                                              VerticalAlignment="Center" IsChecked="{Binding Recursive}" />
+                                              VerticalAlignment="Center" IsChecked="{Binding Recursive}"
+                                              ToolTip="Alerting files found in a subfolder show 'in ⟨subfolder⟩' on the tile" />
                                 </Grid>
                                 <Grid Style="{StaticResource FieldRow}">
                                     <Grid.ColumnDefinitions>
@@ -419,13 +442,42 @@
                                     <TextBlock Text="Tile color:" Style="{StaticResource FieldLabel}" />
                                     <TextBox Grid.Column="1" Text="{Binding Color, UpdateSourceTrigger=PropertyChanged}" />
                                 </Grid>
+                                <ItemsControl ItemsSource="{x:Static vm:SettingsViewModel.SwatchColors}"
+                                              Margin="90,0,0,0">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Style="{StaticResource Swatch}" Click="OnWatchSwatch"
+                                                    Tag="{Binding}" ToolTip="{Binding}"
+                                                    AutomationProperties.Name="{Binding}"
+                                                    Foreground="{Binding Converter={StaticResource ColorStringToForeBrush}}">
+                                                <Button.Background>
+                                                    <SolidColorBrush Color="{Binding}" />
+                                                </Button.Background>
+                                                <TextBlock FontWeight="Bold">
+                                                    <TextBlock.Text>
+                                                        <MultiBinding Converter="{StaticResource SwatchCheck}">
+                                                            <Binding />
+                                                            <Binding Path="DataContext.SelectedWatch.Color"
+                                                                     RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                        </MultiBinding>
+                                                    </TextBlock.Text>
+                                                </TextBlock>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                             </StackPanel>
                         </Grid>
 
                     <StackPanel Grid.Row="3">
                         <TextBlock Text="Alerts" FontWeight="Bold" Margin="0,14,0,8" />
                         <TextBlock Style="{StaticResource SubtleText}" TextWrapping="Wrap"
-                                   Text="Filenames containing any of these terms flash the tile and the inbox count red (one per line):" />
+                                   Text="Filenames containing any of these terms flash the tile and the inbox count red (one per line). Matching ignores case and looks at filenames only:" />
                         <TextBox Text="{Binding AlertTextsText, UpdateSourceTrigger=PropertyChanged}"
                                  AcceptsReturn="True" Height="70" Margin="0,6,0,6"
                                  VerticalScrollBarVisibility="Auto"
@@ -540,15 +592,24 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBox x:Name="NewPwLabel" Margin="0,0,6,0"
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="Name (e.g. the sender):" Style="{StaticResource SubtleText}"
+                                       FontSize="11" Margin="0,0,0,3" />
+                            <TextBlock Grid.Column="1" Text="Password:" Style="{StaticResource SubtleText}"
+                                       FontSize="11" Margin="0,0,0,3" />
+                            <TextBox x:Name="NewPwLabel" Grid.Row="1" Margin="0,0,6,0"
                                      AutomationProperties.Name="New password label" />
-                            <PasswordBox x:Name="NewPwValue" Grid.Column="1" Margin="0,0,6,0"
+                            <PasswordBox x:Name="NewPwValue" Grid.Row="1" Grid.Column="1" Margin="0,0,6,0"
                                          AutomationProperties.Name="New password" />
-                            <Button Grid.Column="2" Content="Add" Click="OnAddPassword" MinWidth="52"
-                                    Margin="0,0,6,0" />
-                            <Button Grid.Column="3" Content="Remove"
+                            <Button Grid.Row="1" Grid.Column="2" Content="Add" Click="OnAddPassword"
+                                    MinWidth="52" Margin="0,0,6,0" />
+                            <Button Grid.Row="1" Grid.Column="3" Content="Remove"
                                     Command="{Binding RemovePasswordCommand}" />
                         </Grid>
+                        <TextBlock x:Name="PwHint" Style="{StaticResource StatusText}" Margin="0,6,0,0" />
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

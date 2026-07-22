@@ -190,15 +190,17 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly Config _original;
     private readonly IDialogService _dialogs;
     private readonly Func<ThemePalette> _palette;
+    private readonly string? _cfgPath;
 
     public Config? Result { get; private set; }
 
     public SettingsViewModel(Config current, IDialogService dialogs,
-        Func<ThemePalette>? palette = null)
+        Func<ThemePalette>? palette = null, string? cfgPath = null)
     {
         _original = current;
         _dialogs = dialogs;
         _palette = palette ?? (() => ThemePalette.Light);
+        _cfgPath = cfgPath;
 
         Inbox = current.Inbox;
         Deferred = current.Deferred;
@@ -244,6 +246,8 @@ public sealed class SettingsViewModel : ObservableObject
         RemoveWatchCommand = new RelayCommand(
             () => { if (SelectedWatch is { } w) WatchFolders.Remove(w); SelectedWatch = WatchFolders.FirstOrDefault(); },
             () => SelectedWatch is not null);
+        WatchUpCommand = new RelayCommand(() => MoveWatch(-1), () => CanMoveWatch(-1));
+        WatchDownCommand = new RelayCommand(() => MoveWatch(+1), () => CanMoveWatch(+1));
 
         RemovePasswordCommand = new RelayCommand(
             () => { if (SelectedPassword is { } p) Passwords.Remove(p); SelectedPassword = Passwords.FirstOrDefault(); },
@@ -329,16 +333,90 @@ public sealed class SettingsViewModel : ObservableObject
 
     // ------------------------------------------------------------- scalars
     private string _inbox = "";
-    public string Inbox { get => _inbox; set => Set(ref _inbox, value); }
+    public string Inbox
+    {
+        get => _inbox;
+        set { if (Set(ref _inbox, value)) Raise(nameof(InboxNote)); }
+    }
 
     private string _deferred = "";
-    public string Deferred { get => _deferred; set => Set(ref _deferred, value); }
+    public string Deferred
+    {
+        get => _deferred;
+        set { if (Set(ref _deferred, value)) Raise(nameof(DeferredNote)); }
+    }
 
     private string _namesFile = "";
-    public string NamesFile { get => _namesFile; set => Set(ref _namesFile, value); }
+    public string NamesFile
+    {
+        get => _namesFile;
+        set { if (Set(ref _namesFile, value)) Raise(nameof(NamesFileNote)); }
+    }
 
     private string _historyDb = "";
-    public string HistoryDb { get => _historyDb; set => Set(ref _historyDb, value); }
+    public string HistoryDb
+    {
+        get => _historyDb;
+        set { if (Set(ref _historyDb, value)) Raise(nameof(HistoryDbNote)); }
+    }
+
+    // Live per-field notes — the OK-time warnings, surfaced as you type
+    public string InboxNote => FolderNote(Inbox,
+        "no inbox folder set — there will be nothing to process");
+    public string DeferredNote => FolderNote(Deferred, "");
+
+    public string NamesFileNote
+    {
+        get
+        {
+            var p = NamesFile.Trim();
+            if (p.Length == 0) return "";
+            if (!Path.IsPathRooted(p)) return "relative — resolved beside the config file";
+            return File.Exists(p) ? "" : "file doesn't exist yet (optional — it seeds the name suggestions)";
+        }
+    }
+
+    public string HistoryDbNote
+    {
+        get
+        {
+            var p = HistoryDb.Trim();
+            if (p.Length == 0) return "";
+            if (!Path.IsPathRooted(p)) return "relative — kept beside the config file";
+            if (File.Exists(p)) return "";
+            var dir = Path.GetDirectoryName(p);
+            return dir is not null && !Directory.Exists(dir)
+                ? $"folder doesn't exist: {dir}"
+                : "a new database will be created here";
+        }
+    }
+
+    private static string FolderNote(string path, string blankMeans)
+    {
+        var p = path.Trim();
+        if (p.Length == 0) return blankMeans;
+        if (!Path.IsPathRooted(p)) return "relative — resolved beside the config file";
+        return Directory.Exists(p) ? "" : $"folder doesn't exist: {p}";
+    }
+
+    public RelayCommand OpenBackupsCommand => _openBackups ??= new RelayCommand(() =>
+    {
+        var db = HistoryDb.Trim();
+        if (!Path.IsPathRooted(db))
+        {
+            var baseDir = _cfgPath is null ? null : Path.GetDirectoryName(Path.GetFullPath(_cfgPath));
+            if (baseDir is null) return;
+            db = Path.Combine(baseDir, db);
+        }
+        var backups = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(db))!, "backups");
+        if (Directory.Exists(backups))
+            System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo(backups) { UseShellExecute = true });
+        else
+            _dialogs.Info("No backups yet — the first one is taken the next time the app starts.",
+                "FileRouter");
+    });
+    private RelayCommand? _openBackups;
 
     private string _monitorTitle = "";
     public string MonitorTitle { get => _monitorTitle; set => Set(ref _monitorTitle, value); }
@@ -457,7 +535,31 @@ public sealed class SettingsViewModel : ObservableObject
     public WatchEditVm? SelectedWatch
     {
         get => _selectedWatch;
-        set { if (Set(ref _selectedWatch, value)) RemoveWatchCommand.RaiseCanExecuteChanged(); }
+        set
+        {
+            if (Set(ref _selectedWatch, value))
+            {
+                RemoveWatchCommand.RaiseCanExecuteChanged();
+                WatchUpCommand.RaiseCanExecuteChanged();
+                WatchDownCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    private bool CanMoveWatch(int delta)
+    {
+        if (SelectedWatch is null) return false;
+        var j = WatchFolders.IndexOf(SelectedWatch) + delta;
+        return j >= 0 && j < WatchFolders.Count;
+    }
+
+    private void MoveWatch(int delta)
+    {
+        if (SelectedWatch is null) return;
+        var i = WatchFolders.IndexOf(SelectedWatch);
+        WatchFolders.Move(i, i + delta);
+        WatchUpCommand.RaiseCanExecuteChanged();
+        WatchDownCommand.RaiseCanExecuteChanged();
     }
 
     private PasswordEditVm? _selectedPassword;
@@ -473,6 +575,8 @@ public sealed class SettingsViewModel : ObservableObject
     public RelayCommand RouteDownCommand { get; }
     public RelayCommand AddWatchCommand { get; }
     public RelayCommand RemoveWatchCommand { get; }
+    public RelayCommand WatchUpCommand { get; }
+    public RelayCommand WatchDownCommand { get; }
     public RelayCommand RemovePasswordCommand { get; }
     public RelayCommand BrowseInboxCommand { get; }
     public RelayCommand BrowseDeferredCommand { get; }
@@ -481,14 +585,17 @@ public sealed class SettingsViewModel : ObservableObject
     public RelayCommand BrowseRoutePathCommand { get; }
     public RelayCommand BrowseWatchPathCommand { get; }
 
-    public void AddPassword(string label, string plain)
+    /// <summary>False when either field is blank — the window shows a nudge
+    /// instead of silently doing nothing.</summary>
+    public bool AddPassword(string label, string plain)
     {
-        if (label.Trim().Length == 0 || plain.Length == 0) return;
+        if (label.Trim().Length == 0 || plain.Length == 0) return false;
         Passwords.Add(new PasswordEditVm
         {
             Label = label.Trim(),
             Stored = PasswordVault.Protect(plain),
         });
+        return true;
     }
 
     private bool CanMoveRoute(int delta)
