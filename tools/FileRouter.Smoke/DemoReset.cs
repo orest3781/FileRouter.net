@@ -42,7 +42,6 @@ public static class DemoReset
             sort = "size_desc",
             uppercase_names = true,
             enter_commits = true,
-            tag_with_route = true,
             monitor_title = "Needs attention",
             flash_alerts = true,
             alert_texts = new[] { "URGENT" },

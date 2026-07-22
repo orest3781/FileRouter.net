@@ -438,10 +438,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         {
             try
             {
-                var (filed, original, warning) = _session.UndoLast();
-                StatusLine = warning.Length > 0
-                    ? warning
-                    : $"Undid {Path.GetFileName(filed)} → {Path.GetFileName(original)}";
+                var (filed, original) = _session.UndoLast();
+                StatusLine = $"Undid {Path.GetFileName(filed)} → {Path.GetFileName(original)}";
             }
             catch (CommitError ex)
             {

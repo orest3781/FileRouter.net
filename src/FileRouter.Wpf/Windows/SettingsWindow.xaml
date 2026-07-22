@@ -166,10 +166,6 @@
                                        VerticalAlignment="Center" Margin="8,0,0,0"
                                        Text="typed spaces become this (blank = keep spaces)" />
                         </Grid>
-
-                        <TextBlock Text="Documents" FontWeight="Bold" Margin="0,10,0,10" />
-                        <CheckBox Content="Stamp the destination label into the PDF (keywords + subject)"
-                                  IsChecked="{Binding TagWithRoute}" />
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

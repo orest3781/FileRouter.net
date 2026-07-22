@@ -54,7 +54,6 @@ public sealed class Config
     [JsonPropertyName("deferred")] public string Deferred { get; set; } = "";
     [JsonPropertyName("names_file")] public string NamesFile { get; set; } = "names.txt";
     [JsonPropertyName("history_db")] public string HistoryDb { get; set; } = "history.sqlite";
-    [JsonPropertyName("tag_with_route")] public bool TagWithRoute { get; set; } = true;
     [JsonPropertyName("naming_mode")] public string NamingMode { get; set; } = "insert";
     [JsonPropertyName("sort")] public string Sort { get; set; } = "size_desc";
     [JsonPropertyName("enter_commits")] public bool EnterCommits { get; set; } = true;

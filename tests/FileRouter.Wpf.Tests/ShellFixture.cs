@@ -35,7 +35,6 @@ public sealed class ShellFixture : IDisposable
             Inbox = Inbox,
             Deferred = Deferred,
             Sort = "filename_asc",
-            TagWithRoute = false,   // fixture "PDFs" are text; tagging is covered by Core + smoke
             Routes = { new Route { Label = "Filed", Path = RouteDir, Color = "#2e7d32" } },
         };
         tweak?.Invoke(Cfg);

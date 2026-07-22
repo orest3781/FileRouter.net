@@ -9,8 +9,7 @@ public sealed class Session
     public const int UndoDepth = 20;
 
     private sealed record UndoEntry(long RowId, int QueueIndex, string FiledPath,
-        string OriginalPath, bool WasSkip,
-        bool Tagged = false, string OldKeywords = "", string OldSubject = "");
+        string OriginalPath, bool WasSkip);
 
     private readonly Config _cfg;
     private readonly History _history;
@@ -58,18 +57,17 @@ public sealed class Session
     public Commit.CommitOutcome CommitCurrent(string typedName, Route route)
     {
         var src = Current ?? throw new CommitError("No document is loaded.");
-        var outcome = Commit.CommitFile(src, typedName, route, SessionMode, _cfg.TagWithRoute);
+        var outcome = Commit.CommitFile(src, typedName, route, SessionMode);
         if (outcome.Vanished) { LogVanished(src); return outcome; }
 
         var result = outcome.NameResult!;
         var rowId = _history.LogCommit(
             src, Path.GetFileName(src), result.Filename,
             Naming.IsBlankName(typedName) ? "" : typedName, result.ModeUsed,
-            result.SuffixApplied, route.Label, route.Path, outcome.Tagged,
+            result.SuffixApplied, route.Label, route.Path, tagged: false,
             result.CollisionSuffix);
         RowIds.Add(rowId);
-        Push(new UndoEntry(rowId, Pos, outcome.NewPath!, src, false,
-            outcome.Tagged, outcome.OldKeywords, outcome.OldSubject));
+        Push(new UndoEntry(rowId, Pos, outcome.NewPath!, src, false));
         Filed++;
         Pos++;
         return outcome;
@@ -92,17 +90,16 @@ public sealed class Session
         return outcome;
     }
 
-    public (string FiledPath, string OriginalPath, string Warning) UndoLast()
+    public (string FiledPath, string OriginalPath) UndoLast()
     {
         if (_undo.Count == 0) throw new CommitError("Nothing to undo.");
         var entry = _undo.Last!.Value;
-        var warning = Commit.UndoAction(entry.FiledPath, entry.OriginalPath,
-            entry.Tagged, entry.OldKeywords, entry.OldSubject);
+        Commit.UndoAction(entry.FiledPath, entry.OriginalPath);
         _undo.RemoveLast();
         _history.MarkReverted(entry.RowId);
         if (entry.WasSkip) Skipped--; else Filed--;
         Pos = entry.QueueIndex;   // the restored file is current again
-        return (entry.FiledPath, entry.OriginalPath, warning);
+        return (entry.FiledPath, entry.OriginalPath);
     }
 
     private void Push(UndoEntry e)

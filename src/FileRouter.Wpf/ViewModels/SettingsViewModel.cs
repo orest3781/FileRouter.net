@@ -212,7 +212,6 @@ public sealed class SettingsViewModel : ObservableObject
         EnterCommits = current.EnterCommits;
         UppercaseNames = current.UppercaseNames;
         WordSeparator = current.WordSeparator;
-        TagWithRoute = current.TagWithRoute;
         FlashAlerts = current.FlashAlerts;
         AlertTextsText = string.Join(Environment.NewLine, current.AlertTexts);
         UiFontFamily = current.UiFontFamily;
@@ -473,8 +472,6 @@ public sealed class SettingsViewModel : ObservableObject
         }
     }
 
-    private bool _tagWithRoute;
-    public bool TagWithRoute { get => _tagWithRoute; set => Set(ref _tagWithRoute, value); }
 
     private bool _flashAlerts;
     public bool FlashAlerts { get => _flashAlerts; set => Set(ref _flashAlerts, value); }
@@ -727,7 +724,6 @@ public sealed class SettingsViewModel : ObservableObject
         cfg.EnterCommits = EnterCommits;
         cfg.UppercaseNames = UppercaseNames;
         cfg.WordSeparator = WordSeparator;
-        cfg.TagWithRoute = TagWithRoute;
         cfg.FlashAlerts = FlashAlerts;
         cfg.AlertTexts = AlertTextsText
             .Split(new[] { '\r', '\n', ',' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
