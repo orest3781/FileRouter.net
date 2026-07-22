@@ -91,6 +91,34 @@ public class DashboardTests
     }
 
     [Fact]
+    public void SubfolderAlertNamesTheSubfolderOnTheCard()
+    {
+        using var fx = WithWatchFolder(out var watched,
+            cfg => cfg.WatchFolders[0].Recursive = true);
+        Directory.CreateDirectory(Path.Combine(watched, "retries"));
+        File.WriteAllText(Path.Combine(watched, "retries", "URGENT-fax.pdf"), "x");
+        fx.Shell.Initialize();
+
+        var tile = Assert.Single(fx.Shell.Tiles);
+        Assert.True(tile.Alerting);
+        Assert.Equal("in retries", tile.SubfolderNote);
+        Assert.True(tile.HasSubfolderNote);
+        Assert.Contains(Path.Combine("retries", "URGENT-fax.pdf"), tile.Tooltip);
+    }
+
+    [Fact]
+    public void TopLevelAlertShowsNoSubfolderNote()
+    {
+        using var fx = WithWatchFolder(out var watched);
+        File.WriteAllText(Path.Combine(watched, "URGENT.pdf"), "x");
+        fx.Shell.Initialize();
+        var tile = Assert.Single(fx.Shell.Tiles);
+        Assert.True(tile.Alerting);
+        Assert.False(tile.HasSubfolderNote);
+        Assert.Equal("", tile.SubfolderNote);
+    }
+
+    [Fact]
     public void SteadyHighlightWhenFlashingIsDisabled()
     {
         using var fx = WithWatchFolder(out var watched, cfg => cfg.FlashAlerts = false);

@@ -31,6 +31,13 @@
                                 <TextBlock Text="{Binding CountText}" FontSize="27" FontWeight="Bold"
                                            Margin="0,2,0,0"
                                            Foreground="{Binding Fore, Converter={StaticResource RgbToBrush}}" />
+                                <!-- where the alerting file sits, when it's in
+                                     a subfolder of the watched folder -->
+                                <TextBlock Text="{Binding SubfolderNote}" FontSize="11"
+                                           TextTrimming="CharacterEllipsis"
+                                           Visibility="{Binding HasSubfolderNote,
+                                                        Converter={StaticResource BoolToVis}}"
+                                           Foreground="{Binding Fore, Converter={StaticResource RgbToBrush}}" />
                             </StackPanel>
                         </Button>
                     </DataTemplate>

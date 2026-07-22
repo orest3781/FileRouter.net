@@ -97,6 +97,50 @@ public class FolderMonitorTests : IDisposable
     }
 
     [Fact]
+    public void AlertInSubfolderReportsTheSubfolder()
+    {
+        var wf = Wf("a", recursive: true);
+        Touch(wf.Path, "normal.pdf");
+        Touch(Path.Combine(wf.Path, "retries"), "URGENT-fax.pdf");
+        var s = FolderMonitor.Status(wf, new[] { "URGENT" });
+        Assert.True(s.Alerting);
+        Assert.Equal(new[] { Path.Combine("retries", "URGENT-fax.pdf") }, s.Matches);
+        Assert.Equal(new[] { "retries" }, s.AlertFolders);
+    }
+
+    [Fact]
+    public void NestedAlertReportsTheRelativeFolderPath()
+    {
+        var wf = Wf("a", recursive: true);
+        Touch(Path.Combine(wf.Path, "old", "batch2"), "URGENT.pdf");
+        var s = FolderMonitor.Status(wf, new[] { "URGENT" });
+        Assert.Equal(new[] { Path.Combine("old", "batch2") }, s.AlertFolders);
+    }
+
+    [Fact]
+    public void TopLevelAlertHasNoAlertFolders()
+    {
+        var wf = Wf("a", recursive: true);
+        Touch(wf.Path, "URGENT.pdf");
+        var s = FolderMonitor.Status(wf, new[] { "URGENT" });
+        Assert.True(s.Alerting);
+        Assert.Empty(s.AlertFolders);
+    }
+
+    [Fact]
+    public void AlertFoldersAreDistinct()
+    {
+        var wf = Wf("a", recursive: true);
+        Touch(Path.Combine(wf.Path, "sub"), "URGENT-1.pdf");
+        Touch(Path.Combine(wf.Path, "sub"), "URGENT-2.pdf");
+        Touch(Path.Combine(wf.Path, "other"), "URGENT-3.pdf");
+        var s = FolderMonitor.Status(wf, new[] { "URGENT" });
+        Assert.Equal(2, s.AlertFolders.Count);
+        Assert.Contains("sub", s.AlertFolders);
+        Assert.Contains("other", s.AlertFolders);
+    }
+
+    [Fact]
     public void NoAlertWhenNothingMatches()
     {
         var wf = Wf("a");

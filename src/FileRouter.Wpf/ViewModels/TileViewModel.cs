@@ -20,6 +20,11 @@ public sealed class TileViewModel : ObservableObject
     /// alerting), or ⚠ alone when the folder is unreadable (tooltip explains).</summary>
     public string CountText { get; }
 
+    /// <summary>Where the alerting files sit when they're not at the top of
+    /// the watched folder — "in retries" / "in retries, old". Blank otherwise.</summary>
+    public string SubfolderNote { get; }
+    public bool HasSubfolderNote => SubfolderNote.Length > 0;
+
     private readonly Rgb _baseBack;
 
     private Rgb _back;
@@ -37,6 +42,9 @@ public sealed class TileViewModel : ObservableObject
             ? $"{s.Label}: {s.Error}"
             : $"{s.Label}: {s.Count}" + (s.Alerting ? "   ⚠" : "");
         CountText = s.Error.Length > 0 ? "⚠" : $"{s.Count}" + (s.Alerting ? " ⚠" : "");
+        SubfolderNote = s.AlertFolders.Count > 0
+            ? "in " + string.Join(", ", s.AlertFolders)
+            : "";
         Tooltip = BuildTip(s);
         _baseBack = ThemePalette.ParseColor(s.Color) ?? palette.TileDefaultBg;
         OpenCommand = new RelayCommand(() => ShellViewModel.OpenFolder(s.Path));
