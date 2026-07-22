@@ -14,6 +14,8 @@ public class ShellReadyTests
 
         Assert.Equal(Screen.Ready, fx.Shell.Screen);
         Assert.Equal("2 files ready", fx.Shell.CountLine);
+        Assert.Equal("2", fx.Shell.BigCount);
+        Assert.Equal("PDFs in the inbox", fx.Shell.CountCaption);
         Assert.True(fx.Shell.StartEnabled);
         Assert.True(fx.Shell.Viewer0Blanked(fx.Viewer));
     }
@@ -69,6 +71,7 @@ public class ShellReadyTests
         using var fx = new ShellFixture(cfg => cfg.Inbox = Path.Combine(cfg.Inbox, "missing"));
         fx.Shell.Initialize();
         Assert.Equal("Inbox problem", fx.Shell.CountLine);
+        Assert.Equal("⚠", fx.Shell.BigCount);
         Assert.False(fx.Shell.StartEnabled);
         Assert.NotEqual("", fx.Shell.DetailLine);
     }

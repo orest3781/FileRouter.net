@@ -96,6 +96,14 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private string _countLine = "";
     public string CountLine { get => _countLine; private set => Set(ref _countLine, value); }
 
+    /// <summary>The big number over the Start button: inbox PDF count, or ⚠
+    /// when the inbox can't be read (DetailLine carries the reason).</summary>
+    private string _bigCount = "";
+    public string BigCount { get => _bigCount; private set => Set(ref _bigCount, value); }
+
+    private string _countCaption = "";
+    public string CountCaption { get => _countCaption; private set => Set(ref _countCaption, value); }
+
     private string _detailLine = "";
     public string DetailLine { get => _detailLine; private set => Set(ref _detailLine, value); }
 
@@ -135,6 +143,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         CountLine = scan.Error.Length > 0
             ? "Inbox problem"
             : $"{scan.Count} file{(scan.Count == 1 ? "" : "s")} ready";
+        BigCount = scan.Error.Length > 0 ? "⚠" : scan.Count.ToString();
+        CountCaption = scan.Error.Length > 0
+            ? "inbox problem"
+            : $"PDF{(scan.Count == 1 ? "" : "s")} in the inbox";
         DetailLine = scan.Error.Length > 0
             ? scan.Error
             : (scan.IgnoredCount > 0

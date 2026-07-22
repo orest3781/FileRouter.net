@@ -2,22 +2,8 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <StackPanel>
-        <TextBlock Text="{Binding CountLine}">
-            <TextBlock.Style>
-                <Style TargetType="TextBlock" BasedOn="{StaticResource HeadlineText}">
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding CountAlertOn}" Value="True">
-                            <Setter Property="Foreground" Value="{DynamicResource Theme.Danger}" />
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </TextBlock.Style>
-        </TextBlock>
-        <TextBlock Text="{Binding DetailLine}" Style="{StaticResource SubtleText}"
-                   TextWrapping="Wrap" Margin="0,4,0,0" />
-
-        <StackPanel Visibility="{Binding DashboardVisible, Converter={StaticResource BoolToVis}}"
-                    Margin="0,16,0,0">
+        <!-- monitored folders: grid of cards at the top (Python parity) -->
+        <StackPanel Visibility="{Binding DashboardVisible, Converter={StaticResource BoolToVis}}">
             <TextBlock Text="{Binding MonitorTitle}" FontWeight="SemiBold" Margin="0,0,0,6" />
             <ItemsControl ItemsSource="{Binding Tiles}">
                 <ItemsControl.ItemsPanel>
@@ -50,10 +36,33 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+
+            <!-- separation between the monitored folders and the inbox block -->
+            <Rectangle Height="1" Fill="{DynamicResource Theme.Border}" Margin="0,14,0,0" />
         </StackPanel>
 
+        <!-- the inbox: one big number over the Start button -->
+        <TextBlock Text="{Binding BigCount}" FontSize="76" FontWeight="Bold"
+                   HorizontalAlignment="Center" Margin="0,14,0,0"
+                   AutomationProperties.Name="{Binding CountLine}">
+            <TextBlock.Style>
+                <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding CountAlertOn}" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource Theme.Danger}" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </TextBlock.Style>
+        </TextBlock>
+        <TextBlock Text="{Binding CountCaption}" Style="{StaticResource SubtleText}"
+                   HorizontalAlignment="Center" Margin="0,-6,0,0" />
+        <TextBlock Text="{Binding DetailLine}" Style="{StaticResource SubtleText}"
+                   HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"
+                   Margin="0,4,0,0" />
+
         <Button Content="Start Processing" Command="{Binding StartCommand}"
-                Style="{StaticResource PrimaryButton}" Height="48" Margin="0,18,0,0"
+                Style="{StaticResource PrimaryButton}" Height="48" Margin="0,14,0,0"
                 FontSize="15" />
         <Button Content="Rescan inbox" Command="{Binding RescanCommand}"
                 Height="36" Margin="0,8,0,0" />
