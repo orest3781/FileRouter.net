@@ -49,6 +49,8 @@ public class DashboardTests
 
         var tile = Assert.Single(fx.Shell.Tiles);
         Assert.Equal("Failed faxes: 2", tile.Display);
+        Assert.Equal("Failed faxes", tile.Label);
+        Assert.Equal("2", tile.CountText);   // the grid card's big number
         Assert.Equal(new Rgb(192, 57, 43), tile.Back);
         Assert.Equal(ThemePalette.IdealForeground(new Rgb(192, 57, 43)), tile.Fore);
         Assert.True(fx.Shell.DashboardVisible);
@@ -64,6 +66,7 @@ public class DashboardTests
         fx.Shell.Initialize();
         var tile = Assert.Single(fx.Shell.Tiles);
         Assert.StartsWith("Failed faxes: folder not available", tile.Display);
+        Assert.Equal("⚠", tile.CountText);
     }
 
     [Fact]
@@ -76,6 +79,7 @@ public class DashboardTests
         var tile = Assert.Single(fx.Shell.Tiles);
         Assert.True(tile.Alerting);
         Assert.Contains("⚠", tile.Display);
+        Assert.Equal("1 ⚠", tile.CountText);
         Assert.True(fx.Shell.FlashRunning);
 
         var baseBack = tile.Back;

@@ -3,8 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         xmlns:views="clr-namespace:FileRouter.Wpf.Views"
-        Title="FileRouter" Width="1280" Height="860" MinWidth="900" MinHeight="600"
-        WindowStartupLocation="CenterScreen"
+        Title="FileRouter" Width="1280" Height="860"
         Style="{StaticResource {x:Type Window}}">
     <Window.InputBindings>
         <KeyBinding Key="K" Modifiers="Ctrl" Command="{Binding SkipCommand}" />
@@ -41,12 +40,12 @@
 
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" MinWidth="320" />
-                <ColumnDefinition Width="5" />
-                <ColumnDefinition Width="430" MinWidth="370" />
+                <ColumnDefinition x:Name="ViewerCol" Width="*" MinWidth="320" />
+                <ColumnDefinition x:Name="SplitterCol" Width="5" />
+                <ColumnDefinition x:Name="PanelCol" Width="430" MinWidth="370" />
             </Grid.ColumnDefinitions>
             <wv2:WebView2 x:Name="Viewer" Grid.Column="0" />
-            <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch"
+            <GridSplitter x:Name="Split" Grid.Column="1" HorizontalAlignment="Stretch"
                           VerticalAlignment="Stretch" ResizeBehavior="PreviousAndNext" />
             <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled"

@@ -16,6 +16,10 @@ public sealed class TileViewModel : ObservableObject
     public bool Alerting { get; }
     public RelayCommand OpenCommand { get; }
 
+    /// <summary>The big number on the grid card: file count (⚠ suffixed while
+    /// alerting), or ⚠ alone when the folder is unreadable (tooltip explains).</summary>
+    public string CountText { get; }
+
     private readonly Rgb _baseBack;
 
     private Rgb _back;
@@ -32,6 +36,7 @@ public sealed class TileViewModel : ObservableObject
         Display = s.Error.Length > 0
             ? $"{s.Label}: {s.Error}"
             : $"{s.Label}: {s.Count}" + (s.Alerting ? "   ⚠" : "");
+        CountText = s.Error.Length > 0 ? "⚠" : $"{s.Count}" + (s.Alerting ? " ⚠" : "");
         Tooltip = BuildTip(s);
         _baseBack = ThemePalette.ParseColor(s.Color) ?? palette.TileDefaultBg;
         OpenCommand = new RelayCommand(() => ShellViewModel.OpenFolder(s.Path));

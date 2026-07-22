@@ -25,6 +25,16 @@ public partial class MainWindow : Window
 
         Shell.RoutesRebuilt += RebindRouteHotkeys;
         Shell.SettingsApplied += () => App.ApplyFont(Application.Current, Shell.Cfg);
+
+        // Python-parity window lifecycle: the Ready dashboard is a compact
+        // window parked in the top-right corner; the window only grows to the
+        // full viewer layout while a session runs. Both geometries remembered.
+        Shell.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ShellViewModel.Screen)) ApplyWindowMode();
+        };
+        WindowStartupLocation = WindowStartupLocation.Manual;
+        EnterCompact(initial: true);
         InputBindings.Add(new System.Windows.Input.KeyBinding(
             new Mvvm.RelayCommand(() => OnSettings(this, new RoutedEventArgs())),
             System.Windows.Input.Key.OemComma, System.Windows.Input.ModifierKeys.Control));
@@ -41,6 +51,84 @@ public partial class MainWindow : Window
     }
 
     private void OnExit(object sender, RoutedEventArgs e) => Close();
+
+    // ------------------------------------------------ compact/normal modes
+    private Rect? _normalBounds;
+    private Rect? _compactBounds;
+    private bool _compact;
+
+    private void ApplyWindowMode()
+    {
+        if (Shell.IsReady) EnterCompact(initial: false);
+        else EnterNormal();
+    }
+
+    private void EnterCompact(bool initial)
+    {
+        if (!initial)
+        {
+            if (_compact) return;
+            _normalBounds = new Rect(Left, Top, ActualWidth, ActualHeight);
+        }
+        _compact = true;
+
+        Viewer.Visibility = Visibility.Collapsed;
+        Split.Visibility = Visibility.Collapsed;
+        ViewerCol.MinWidth = 0;
+        ViewerCol.Width = new GridLength(0);
+        SplitterCol.Width = new GridLength(0);
+        PanelCol.MinWidth = 0;
+        PanelCol.Width = new GridLength(1, GridUnitType.Star);
+        MinWidth = 400;
+        MinHeight = 460;
+
+        if (_compactBounds is { } b)
+        {
+            Left = b.Left; Top = b.Top; Width = b.Width; Height = b.Height;
+        }
+        else
+        {
+            Width = 470;
+            Height = 540;
+            var wa = SystemParameters.WorkArea;   // DIPs, primary monitor
+            Left = wa.Right - Width - 12;
+            Top = wa.Top + 12;
+        }
+    }
+
+    private void EnterNormal()
+    {
+        if (!_compact) return;
+        // capture BEFORE touching MinWidth — raising it resizes the window
+        // immediately and would corrupt the geometry math below
+        var compact = new Rect(Left, Top, ActualWidth, ActualHeight);
+        _compactBounds = compact;
+        _compact = false;
+
+        Viewer.Visibility = Visibility.Visible;
+        Split.Visibility = Visibility.Visible;
+        ViewerCol.MinWidth = 320;
+        ViewerCol.Width = new GridLength(1, GridUnitType.Star);
+        SplitterCol.Width = new GridLength(5);
+        PanelCol.MinWidth = 370;
+        PanelCol.Width = new GridLength(430);
+        MinWidth = 900;
+        MinHeight = 600;
+
+        if (_normalBounds is { } b)
+        {
+            Left = b.Left; Top = b.Top; Width = b.Width; Height = b.Height;
+        }
+        else
+        {
+            // grow leftward from the parked corner so the big window opens on
+            // the same monitor the user parked the dashboard on
+            Width = 1280;
+            Height = 860;
+            Left = Math.Max(SystemParameters.VirtualScreenLeft, compact.Right - Width);
+            Top = compact.Top;
+        }
+    }
 
     private void OnViewHistory(object sender, RoutedEventArgs e) =>
         new Windows.HistoryWindow(new ViewModels.HistoryViewModel(Shell.History, Dialogs))
