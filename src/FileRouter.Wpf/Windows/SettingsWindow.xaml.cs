@@ -65,6 +65,17 @@ public partial class SettingsWindow : Window
             r.Color = color;
     }
 
+    private void OnSizeUp(object sender, RoutedEventArgs e) => NudgeSize(+1);
+    private void OnSizeDown(object sender, RoutedEventArgs e) => NudgeSize(-1);
+
+    /// <summary>Step the base text size from its effective value (blank = the
+    /// 14pt default), clamped to the valid 6-72 range.</summary>
+    private void NudgeSize(int delta)
+    {
+        var current = int.TryParse(_vm.UiFontSizeText.Trim(), out var n) ? n : 14;
+        _vm.UiFontSizeText = Math.Clamp(current + delta, 6, 72).ToString();
+    }
+
     private void OnAddPassword(object sender, RoutedEventArgs e)
     {
         _vm.AddPassword(NewPwLabel.Text, NewPwValue.Password);

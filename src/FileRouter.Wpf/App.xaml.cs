@@ -43,7 +43,7 @@ public partial class App : Application
             return;
         }
 
-        Theme.ThemeManager.Start(this);
+        Theme.ThemeManager.Start(this, cfg.Theme);
         ApplyFont(this, cfg);
 
         try

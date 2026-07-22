@@ -439,7 +439,15 @@
             <!-- ============================================== Appearance -->
             <TabItem Header="Appearance">
                 <StackPanel Margin="16,8">
-                    <TextBlock Text="Text" FontWeight="Bold" Margin="0,0,0,10" />
+                    <TextBlock Text="Colors" FontWeight="Bold" Margin="0,0,0,10" />
+                    <RadioButton Content="Follow Windows light/dark mode"
+                                 IsChecked="{Binding ThemeAuto}" GroupName="ThemeMode" />
+                    <RadioButton Content="Always light" IsChecked="{Binding ThemeLight}"
+                                 GroupName="ThemeMode" />
+                    <RadioButton Content="Always dark" IsChecked="{Binding ThemeDark}"
+                                 GroupName="ThemeMode" />
+
+                    <TextBlock Text="Text" FontWeight="Bold" Margin="0,14,0,10" />
                     <Grid Style="{StaticResource FieldRow}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="130" />
@@ -456,16 +464,39 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="130" />
                             <ColumnDefinition Width="80" />
+                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="Base text size:" Style="{StaticResource FieldLabel}" />
                         <TextBox Grid.Column="1" Text="{Binding UiFontSizeText, UpdateSourceTrigger=PropertyChanged}" />
-                        <TextBlock Grid.Column="2" Style="{StaticResource SubtleText}"
+                        <StackPanel Grid.Column="2" Margin="4,0,0,0">
+                            <Button Content="▲" FontSize="8" Padding="6,1" Click="OnSizeUp"
+                                    AutomationProperties.Name="Larger text" />
+                            <Button Content="▼" FontSize="8" Padding="6,1" Margin="0,2,0,0"
+                                    Click="OnSizeDown" AutomationProperties.Name="Smaller text" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="3" Style="{StaticResource SubtleText}"
                                    VerticalAlignment="Center" Margin="8,0,0,0"
                                    Text="6–72, or blank for the default" />
                     </Grid>
-                    <TextBlock Style="{StaticResource SubtleText}" TextWrapping="Wrap" Margin="0,10,0,0"
-                               Text="Colors follow Windows light/dark mode automatically." />
+
+                    <!-- what the choices actually look like, live -->
+                    <TextBlock Text="Sample" FontWeight="Bold" Margin="0,14,0,6" />
+                    <Border Background="{DynamicResource Theme.Surface}"
+                            BorderBrush="{DynamicResource Theme.Border}" BorderThickness="1"
+                            CornerRadius="4" Padding="12,10">
+                        <StackPanel>
+                            <TextBlock Text="Will be filed as:  20240115-SMITH JOHN-12345.pdf"
+                                       FontFamily="{Binding UiFontFamily, Converter={StaticResource FontFamilyString}}"
+                                       FontSize="{Binding UiFontSizeText, Converter={StaticResource FontSizeText}}"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Text="The quick brown fax jumps over 0123456789."
+                                       FontFamily="{Binding UiFontFamily, Converter={StaticResource FontFamilyString}}"
+                                       FontSize="{Binding UiFontSizeText, Converter={StaticResource FontSizeText}}"
+                                       Style="{StaticResource SubtleText}" Margin="0,4,0,0"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </TabItem>
 

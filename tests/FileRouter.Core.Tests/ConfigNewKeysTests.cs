@@ -102,4 +102,19 @@ public class ConfigNewKeysTests : IDisposable
     [InlineData("_")]
     public void SaneSeparatorsAreAccepted(string sep) =>
         Assert.Equal(sep, LoadJson($"{{ \"word_separator\": \"{sep}\" }}").WordSeparator);
+
+    [Theory]
+    [InlineData("auto")]
+    [InlineData("light")]
+    [InlineData("dark")]
+    public void ThemeAcceptsTheThreeModes(string mode) =>
+        Assert.Equal(mode, LoadJson($"{{ \"theme\": \"{mode}\" }}").Theme);
+
+    [Fact]
+    public void ThemeDefaultsToAutoAndRejectsGarbage()
+    {
+        Assert.Equal("auto", RoundTrip(new Config()).Theme);
+        var ex = Assert.Throws<ConfigException>(() => LoadJson("{ \"theme\": \"blue\" }"));
+        Assert.Contains("theme", ex.Message);
+    }
 }

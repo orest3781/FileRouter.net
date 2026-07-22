@@ -215,6 +215,7 @@ public sealed class SettingsViewModel : ObservableObject
         AlertTextsText = string.Join(Environment.NewLine, current.AlertTexts);
         UiFontFamily = current.UiFontFamily;
         UiFontSizeText = current.UiFontSize == 0 ? "" : current.UiFontSize.ToString();
+        _themeMode = current.Theme;
         UnlockSuffix = current.UnlockSuffix;
 
         Routes = new ObservableCollection<RouteEditVm>(current.Routes.Select(RouteEditVm.From));
@@ -412,6 +413,26 @@ public sealed class SettingsViewModel : ObservableObject
     private string _unlockSuffix = "";
     public string UnlockSuffix { get => _unlockSuffix; set => Set(ref _unlockSuffix, value); }
 
+    // ------------------------------------------------------------- theme
+    private string _themeMode = "auto";
+    public string ThemeMode
+    {
+        get => _themeMode;
+        set
+        {
+            if (Set(ref _themeMode, value))
+            {
+                Raise(nameof(ThemeAuto));
+                Raise(nameof(ThemeLight));
+                Raise(nameof(ThemeDark));
+            }
+        }
+    }
+
+    public bool ThemeAuto { get => ThemeMode == "auto"; set { if (value) ThemeMode = "auto"; } }
+    public bool ThemeLight { get => ThemeMode == "light"; set { if (value) ThemeMode = "light"; } }
+    public bool ThemeDark { get => ThemeMode == "dark"; set { if (value) ThemeMode = "dark"; } }
+
     // ----------------------------------------------------------- collections
     public ObservableCollection<RouteEditVm> Routes { get; }
     public ObservableCollection<WatchEditVm> WatchFolders { get; }
@@ -606,6 +627,7 @@ public sealed class SettingsViewModel : ObservableObject
             .ToList();
         cfg.UiFontFamily = UiFontFamily;
         cfg.UiFontSize = UiFontSizeText.Trim().Length == 0 ? 0 : int.Parse(UiFontSizeText.Trim());
+        cfg.Theme = ThemeMode;
         cfg.UnlockSuffix = UnlockSuffix.Trim();
         cfg.Routes = Routes.Select(r => r.ToRoute()).ToList();
         cfg.WatchFolders = WatchFolders.Select(w => w.ToWatchFolder()).ToList();

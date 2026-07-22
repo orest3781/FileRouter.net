@@ -74,6 +74,9 @@ public sealed class Config
     [JsonPropertyName("ui_font_family")] public string UiFontFamily { get; set; } = "";
     [JsonPropertyName("ui_font_size")] public int UiFontSize { get; set; }   // 0 = default
 
+    // "auto" follows the Windows light/dark preference; "light"/"dark" force it
+    [JsonPropertyName("theme")] public string Theme { get; set; } = "auto";
+
     // Typed space becomes this string in the name box ("" = keep spaces)
     [JsonPropertyName("word_separator")] public string WordSeparator { get; set; } = "";
 
@@ -124,6 +127,9 @@ public sealed class Config
         if (cfg.WordSeparator.Contains(' '))
             throw new ConfigException(
                 "word_separator must not contain a space — substitution would loop forever");
+        if (cfg.Theme is not ("auto" or "light" or "dark"))
+            throw new ConfigException(
+                $"theme must be one of auto/light/dark, got \"{cfg.Theme}\"");
         return cfg;
     }
 

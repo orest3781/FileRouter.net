@@ -13,14 +13,25 @@ public static class ThemeManager
     public static bool IsDark { get; private set; }
     public static ThemePalette Current => IsDark ? ThemePalette.Dark : ThemePalette.Light;
 
-    public static void Start(Application app)
+    /// <summary>"auto" (follow Windows), "light", or "dark" — the config's
+    /// theme key. Only auto reacts to the OS preference changing.</summary>
+    public static string Mode { get; private set; } = "auto";
+
+    public static void Start(Application app, string mode = "auto")
     {
-        Apply(app, ReadOsPrefersDark());
+        SetMode(app, mode);
         SystemEvents.UserPreferenceChanged += (_, e) =>
         {
-            if (e.Category is UserPreferenceCategory.General or UserPreferenceCategory.Color)
+            if (Mode == "auto" &&
+                e.Category is UserPreferenceCategory.General or UserPreferenceCategory.Color)
                 app.Dispatcher.BeginInvoke(() => Apply(app, ReadOsPrefersDark()));
         };
+    }
+
+    public static void SetMode(Application app, string mode)
+    {
+        Mode = mode is "light" or "dark" ? mode : "auto";
+        Apply(app, Mode == "dark" || (Mode == "auto" && ReadOsPrefersDark()));
     }
 
     public static void Apply(Application app, bool dark)

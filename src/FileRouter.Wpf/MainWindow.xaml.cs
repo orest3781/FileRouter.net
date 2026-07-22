@@ -24,7 +24,11 @@ public partial class MainWindow : Window
         DataContext = Shell;
 
         Shell.RoutesRebuilt += RebindRouteHotkeys;
-        Shell.SettingsApplied += () => App.ApplyFont(Application.Current, Shell.Cfg);
+        Shell.SettingsApplied += () =>
+        {
+            App.ApplyFont(Application.Current, Shell.Cfg);
+            Theme.ThemeManager.SetMode(Application.Current, Shell.Cfg.Theme);
+        };
 
         // Python-parity window lifecycle: the Ready dashboard is a compact
         // window parked in the top-right corner; the window only grows to the

@@ -249,6 +249,22 @@ public class SettingsViewModelTests : IDisposable
     }
 
     [Fact]
+    public void ThemeModeRoundTripsThroughTheRadiosIntoTheResult()
+    {
+        var vm = new SettingsViewModel(new Config { Inbox = _dir }, _dialogs);
+        Assert.True(vm.ThemeAuto);
+
+        vm.ThemeDark = true;
+        Assert.True(vm.ThemeDark);
+        Assert.False(vm.ThemeAuto);
+        Assert.True(vm.TryBuildResult());
+        Assert.Equal("dark", vm.Result!.Theme);
+
+        var vm2 = new SettingsViewModel(vm.Result, _dialogs);
+        Assert.True(vm2.ThemeDark);
+    }
+
+    [Fact]
     public void AlertTermsParseFromLinesAndCommas()
     {
         var vm = new SettingsViewModel(new Config { Inbox = _dir }, _dialogs)
