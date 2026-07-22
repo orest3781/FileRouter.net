@@ -35,6 +35,15 @@ public partial class MainWindow : Window
         };
         WindowStartupLocation = WindowStartupLocation.Manual;
         EnterCompact(initial: true);
+
+        // a manual user resize flips SizeToContent to Manual (WPF behavior);
+        // re-assert auto-fit when the tile set changes so the dashboard keeps
+        // tracking its content
+        Shell.Tiles.CollectionChanged += (_, _) =>
+        {
+            if (_compact && SizeToContent != SizeToContent.Height)
+                SizeToContent = SizeToContent.Height;
+        };
         InputBindings.Add(new System.Windows.Input.KeyBinding(
             new Mvvm.RelayCommand(() => OnSettings(this, new RoutedEventArgs())),
             System.Windows.Input.Key.OemComma, System.Windows.Input.ModifierKeys.Control));
@@ -80,17 +89,23 @@ public partial class MainWindow : Window
         PanelCol.MinWidth = 0;
         PanelCol.Width = new GridLength(1, GridUnitType.Star);
         MinWidth = 400;
-        MinHeight = 460;
+        MinHeight = 0;
+
+        // auto-fit: the dashboard sizes itself to its content and grows
+        // downward as monitored folders appear — no scrollbars. Capped at the
+        // work area so a huge folder list can't push it off-screen (the
+        // ScrollViewer only kicks in past that cap).
+        var wa = SystemParameters.WorkArea;   // DIPs, primary monitor
+        MaxHeight = wa.Height - 24;
+        SizeToContent = SizeToContent.Height;
 
         if (_compactBounds is { } b)
         {
-            Left = b.Left; Top = b.Top; Width = b.Width; Height = b.Height;
+            Left = b.Left; Top = b.Top; Width = b.Width;
         }
         else
         {
             Width = 470;
-            Height = 540;
-            var wa = SystemParameters.WorkArea;   // DIPs, primary monitor
             Left = wa.Right - Width - 12;
             Top = wa.Top + 12;
         }
@@ -104,6 +119,11 @@ public partial class MainWindow : Window
         var compact = new Rect(Left, Top, ActualWidth, ActualHeight);
         _compactBounds = compact;
         _compact = false;
+
+        // back to explicit sizing BEFORE the bounds are set, or the Height
+        // assignments below would be ignored
+        SizeToContent = SizeToContent.Manual;
+        MaxHeight = double.PositiveInfinity;
 
         Viewer.Visibility = Visibility.Visible;
         Split.Visibility = Visibility.Visible;
