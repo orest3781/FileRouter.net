@@ -125,6 +125,161 @@
         <Setter Property="Foreground" Value="{DynamicResource Theme.Text}" />
     </Style>
 
+    <!-- MenuItem is fully retemplated: the stock Windows template hardcodes a
+         LIGHT popup background while the item text follows the overridden
+         SystemColors menu-text brush — in dark mode that made dropdowns
+         white-on-white. Four roles, one look, all brushes from the theme. -->
+
+    <ControlTemplate x:Key="MenuTopLevelHeader" TargetType="MenuItem">
+        <Border x:Name="Bd" Background="Transparent" CornerRadius="4" Padding="10,5"
+                SnapsToDevicePixels="True">
+            <Grid>
+                <ContentPresenter ContentSource="Header" RecognizesAccessKey="True"
+                                  VerticalAlignment="Center" />
+                <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsSubmenuOpen}"
+                       Placement="Bottom" AllowsTransparency="True" Focusable="False"
+                       PopupAnimation="Fade">
+                    <Border Background="{DynamicResource Theme.Surface}"
+                            BorderBrush="{DynamicResource Theme.Border}"
+                            BorderThickness="1" CornerRadius="6" Padding="4" Margin="0,2,8,8">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.35" />
+                        </Border.Effect>
+                        <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle" />
+                    </Border>
+                </Popup>
+            </Grid>
+        </Border>
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsHighlighted" Value="True">
+                <Setter TargetName="Bd" Property="Background"
+                        Value="{DynamicResource Theme.SurfaceHover}" />
+            </Trigger>
+            <Trigger Property="IsSubmenuOpen" Value="True">
+                <Setter TargetName="Bd" Property="Background"
+                        Value="{DynamicResource Theme.SurfacePressed}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Foreground" Value="{DynamicResource Theme.SubtleText}" />
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+
+    <ControlTemplate x:Key="MenuTopLevelItem" TargetType="MenuItem">
+        <Border x:Name="Bd" Background="Transparent" CornerRadius="4" Padding="10,5"
+                SnapsToDevicePixels="True">
+            <ContentPresenter ContentSource="Header" RecognizesAccessKey="True"
+                              VerticalAlignment="Center" />
+        </Border>
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsHighlighted" Value="True">
+                <Setter TargetName="Bd" Property="Background"
+                        Value="{DynamicResource Theme.SurfaceHover}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Foreground" Value="{DynamicResource Theme.SubtleText}" />
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+
+    <ControlTemplate x:Key="MenuSubmenuItem" TargetType="MenuItem">
+        <Border x:Name="Bd" Background="Transparent" CornerRadius="4"
+                Padding="10,7" SnapsToDevicePixels="True" MinWidth="220">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ContentPresenter ContentSource="Header" RecognizesAccessKey="True"
+                                  VerticalAlignment="Center" />
+                <TextBlock x:Name="Gesture" Grid.Column="1" Margin="24,0,4,0"
+                           VerticalAlignment="Center"
+                           Text="{TemplateBinding InputGestureText}"
+                           Foreground="{DynamicResource Theme.SubtleText}" />
+            </Grid>
+        </Border>
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsHighlighted" Value="True">
+                <Setter TargetName="Bd" Property="Background"
+                        Value="{DynamicResource Theme.Accent}" />
+                <Setter Property="Foreground" Value="{DynamicResource Theme.AccentText}" />
+                <Setter TargetName="Gesture" Property="Foreground"
+                        Value="{DynamicResource Theme.AccentText}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Foreground" Value="{DynamicResource Theme.SubtleText}" />
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+
+    <ControlTemplate x:Key="MenuSubmenuHeader" TargetType="MenuItem">
+        <Border x:Name="Bd" Background="Transparent" CornerRadius="4"
+                Padding="10,7" SnapsToDevicePixels="True" MinWidth="220">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ContentPresenter ContentSource="Header" RecognizesAccessKey="True"
+                                  VerticalAlignment="Center" />
+                <Path Grid.Column="1" Margin="24,0,4,0" VerticalAlignment="Center"
+                      Data="M 0 0 L 4 4 L 0 8 Z"
+                      Fill="{DynamicResource Theme.SubtleText}" />
+                <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsSubmenuOpen}"
+                       Placement="Right" AllowsTransparency="True" Focusable="False"
+                       PopupAnimation="Fade">
+                    <Border Background="{DynamicResource Theme.Surface}"
+                            BorderBrush="{DynamicResource Theme.Border}"
+                            BorderThickness="1" CornerRadius="6" Padding="4" Margin="0,0,8,8">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.35" />
+                        </Border.Effect>
+                        <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle" />
+                    </Border>
+                </Popup>
+            </Grid>
+        </Border>
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsHighlighted" Value="True">
+                <Setter TargetName="Bd" Property="Background"
+                        Value="{DynamicResource Theme.SurfaceHover}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Foreground" Value="{DynamicResource Theme.SubtleText}" />
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+
+    <Style TargetType="MenuItem">
+        <Setter Property="Foreground" Value="{DynamicResource Theme.Text}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Style.Triggers>
+            <Trigger Property="Role" Value="TopLevelHeader">
+                <Setter Property="Template" Value="{StaticResource MenuTopLevelHeader}" />
+            </Trigger>
+            <Trigger Property="Role" Value="TopLevelItem">
+                <Setter Property="Template" Value="{StaticResource MenuTopLevelItem}" />
+            </Trigger>
+            <Trigger Property="Role" Value="SubmenuHeader">
+                <Setter Property="Template" Value="{StaticResource MenuSubmenuHeader}" />
+            </Trigger>
+            <Trigger Property="Role" Value="SubmenuItem">
+                <Setter Property="Template" Value="{StaticResource MenuSubmenuItem}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="{x:Static MenuItem.SeparatorStyleKey}" TargetType="Separator">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Separator">
+                    <Rectangle Height="1" Margin="8,4"
+                               Fill="{DynamicResource Theme.Border}" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style TargetType="StatusBar">
         <Setter Property="Background" Value="{DynamicResource Theme.WindowBg}" />
         <Setter Property="Foreground" Value="{DynamicResource Theme.Text}" />
