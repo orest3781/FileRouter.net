@@ -9,5 +9,9 @@ public interface IDialogService
     bool Confirm(string message, string title);
     string? AskSaveFile(string filter, string suggestedName);
     string? AskOpenFile(string filter);
+
+    /// <summary>Pick a file that may or may not exist yet (the history DB
+    /// path). An open-style dialog — never the "replace it?" save prompt.</summary>
+    string? AskFilePath(string filter, string suggestedName);
     string? BrowseFolder(string? startAt);
 }

@@ -165,6 +165,19 @@ public class SettingsViewModelTests : IDisposable
     }
 
     [Fact]
+    public void HistoryDbBrowseUsesTheOpenStylePicker()
+    {
+        var vm = new SettingsViewModel(new Config { Inbox = _dir }, _dialogs);
+        _dialogs.NextFilePath = Path.Combine(_dir, "audit.sqlite");
+        vm.BrowseHistoryDbCommand.Execute(null);
+        Assert.Equal(Path.Combine(_dir, "audit.sqlite"), vm.HistoryDb);
+
+        _dialogs.NextFilePath = null;   // cancel keeps the old value
+        vm.BrowseHistoryDbCommand.Execute(null);
+        Assert.Equal(Path.Combine(_dir, "audit.sqlite"), vm.HistoryDb);
+    }
+
+    [Fact]
     public void AlertTermsParseFromLinesAndCommas()
     {
         var vm = new SettingsViewModel(new Config { Inbox = _dir }, _dialogs)

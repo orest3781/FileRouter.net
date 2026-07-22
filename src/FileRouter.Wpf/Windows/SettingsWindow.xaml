@@ -159,10 +159,12 @@
 
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
-                            <Button Content="Add" Command="{Binding AddRouteCommand}" Width="52" Margin="0,0,4,0" />
-                            <Button Content="Remove" Command="{Binding RemoveRouteCommand}" Width="64" Margin="0,0,4,0" />
-                            <Button Content="↑" Command="{Binding RouteUpCommand}" Width="32" Margin="0,0,4,0" />
-                            <Button Content="↓" Command="{Binding RouteDownCommand}" Width="32" />
+                            <Button Content="Add" Command="{Binding AddRouteCommand}" MinWidth="52" Margin="0,0,4,0" />
+                            <Button Content="Remove" Command="{Binding RemoveRouteCommand}" Margin="0,0,4,0" />
+                            <Button Content="↑" Command="{Binding RouteUpCommand}" MinWidth="34" Margin="0,0,4,0"
+                                    ToolTip="Move up — buttons show in this order" />
+                            <Button Content="↓" Command="{Binding RouteDownCommand}" MinWidth="34"
+                                    ToolTip="Move down — buttons show in this order" />
                         </StackPanel>
                         <ListBox ItemsSource="{Binding Routes}" SelectedItem="{Binding SelectedRoute}"
                                  DisplayMemberPath="Label" />
@@ -217,7 +219,8 @@
                                          AutomationProperties.Name="Hotkey — press keys to set" />
                                 <TextBlock Grid.Column="2" Style="{StaticResource SubtleText}"
                                            VerticalAlignment="Center" Margin="8,0,0,0"
-                                           Text="press the keys, or Backspace to clear" />
+                                           TextWrapping="Wrap"
+                                           Text="press the keys · Backspace clears" />
                             </Grid>
 
                             <Grid Style="{StaticResource FieldRow}">
@@ -279,27 +282,35 @@
 
             <!-- ============================================== Dashboard -->
             <TabItem Header="Dashboard">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="16,8">
-                        <Grid Style="{StaticResource FieldRow}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="130" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="Section heading:" Style="{StaticResource FieldLabel}" />
-                            <TextBox Grid.Column="1" Text="{Binding MonitorTitle, UpdateSourceTrigger=PropertyChanged}" />
-                        </Grid>
+                <Grid Margin="16,8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
 
-                        <TextBlock Text="Monitored folders" FontWeight="Bold" Margin="0,10,0,8" />
-                        <Grid Height="200">
+                    <Grid Style="{StaticResource FieldRow}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="130" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Section heading:" Style="{StaticResource FieldLabel}" />
+                        <TextBox Grid.Column="1" Text="{Binding MonitorTitle, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+
+                    <TextBlock Grid.Row="1" Text="Monitored folders" FontWeight="Bold" Margin="0,10,0,8" />
+                    <!-- the folder editor takes all remaining height — a long
+                         folder list gets the space, not a cramped fixed strip -->
+                    <Grid Grid.Row="2">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="200" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <DockPanel>
                                 <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
-                                    <Button Content="Add" Command="{Binding AddWatchCommand}" Width="52" Margin="0,0,4,0" />
-                                    <Button Content="Remove" Command="{Binding RemoveWatchCommand}" Width="64" />
+                                    <Button Content="Add" Command="{Binding AddWatchCommand}" MinWidth="52" Margin="0,0,4,0" />
+                                    <Button Content="Remove" Command="{Binding RemoveWatchCommand}" />
                                 </StackPanel>
                                 <ListBox ItemsSource="{Binding WatchFolders}" SelectedItem="{Binding SelectedWatch}"
                                          DisplayMemberPath="Label" />
@@ -356,6 +367,7 @@
                             </StackPanel>
                         </Grid>
 
+                    <StackPanel Grid.Row="3">
                         <TextBlock Text="Alerts" FontWeight="Bold" Margin="0,14,0,8" />
                         <TextBlock Style="{StaticResource SubtleText}" TextWrapping="Wrap"
                                    Text="Filenames containing any of these terms flash the tile and the inbox count red (one per line):" />
@@ -366,7 +378,7 @@
                         <CheckBox Content="Flash alerts (uncheck for a steady highlight)"
                                   IsChecked="{Binding FlashAlerts}" />
                     </StackPanel>
-                </ScrollViewer>
+                </Grid>
             </TabItem>
 
             <!-- ============================================== Appearance -->
@@ -409,7 +421,7 @@
                         <TextBlock Text="Unlock PDFs" FontWeight="Bold" Margin="0,0,0,10" />
                         <Grid Style="{StaticResource FieldRow}">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="130" />
+                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="160" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
@@ -446,9 +458,9 @@
                                      AutomationProperties.Name="New password label" />
                             <PasswordBox x:Name="NewPwValue" Grid.Column="1" Margin="0,0,6,0"
                                          AutomationProperties.Name="New password" />
-                            <Button Grid.Column="2" Content="Add" Click="OnAddPassword" Width="52"
+                            <Button Grid.Column="2" Content="Add" Click="OnAddPassword" MinWidth="52"
                                     Margin="0,0,6,0" />
-                            <Button Grid.Column="3" Content="Remove" Width="64"
+                            <Button Grid.Column="3" Content="Remove"
                                     Command="{Binding RemovePasswordCommand}" />
                         </Grid>
                     </StackPanel>

@@ -222,8 +222,10 @@ public sealed class SettingsViewModel : ObservableObject
         BrowseDeferredCommand = new RelayCommand(() => Deferred = _dialogs.BrowseFolder(Deferred) ?? Deferred);
         BrowseNamesFileCommand = new RelayCommand(() =>
             NamesFile = _dialogs.AskOpenFile("Name lists (*.txt)|*.txt|All files (*.*)|*.*") ?? NamesFile);
+        // open-style picker: choosing the EXISTING audit db must not trigger
+        // the save dialog's "already exists — replace?" prompt
         BrowseHistoryDbCommand = new RelayCommand(() =>
-            HistoryDb = _dialogs.AskSaveFile("SQLite database (*.sqlite)|*.sqlite|All files (*.*)|*.*",
+            HistoryDb = _dialogs.AskFilePath("SQLite database (*.sqlite)|*.sqlite|All files (*.*)|*.*",
                 System.IO.Path.GetFileName(HistoryDb)) ?? HistoryDb);
         BrowseRoutePathCommand = new RelayCommand(() =>
         {

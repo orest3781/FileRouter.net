@@ -32,6 +32,7 @@ public sealed class FakeDialogs : IDialogService
     public bool ConfirmAnswer { get; set; } = true;
     public string? NextSaveFile { get; set; }
     public string? NextOpenFile { get; set; }
+    public string? NextFilePath { get; set; }
     public string? NextFolder { get; set; }
 
     public void Warn(string message, string title) => Warnings.Add((message, title));
@@ -39,5 +40,6 @@ public sealed class FakeDialogs : IDialogService
     public bool Confirm(string message, string title) => ConfirmAnswer;
     public string? AskSaveFile(string filter, string suggested) => NextSaveFile;
     public string? AskOpenFile(string filter) => NextOpenFile;
+    public string? AskFilePath(string filter, string suggested) => NextFilePath;
     public string? BrowseFolder(string? startAt) => NextFolder;
 }

@@ -46,5 +46,6 @@ internal sealed class RecordingDialogs : IDialogService
     public bool Confirm(string message, string title) => true;
     public string? AskSaveFile(string filter, string suggested) => null;
     public string? AskOpenFile(string filter) => null;
+    public string? AskFilePath(string filter, string suggested) => null;
     public string? BrowseFolder(string? startAt) => null;
 }

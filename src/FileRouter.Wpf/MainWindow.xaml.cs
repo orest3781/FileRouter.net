@@ -210,6 +210,7 @@ public partial class MainWindow : Window
         public bool Confirm(string m, string t) => _get().Confirm(m, t);
         public string? AskSaveFile(string f, string s) => _get().AskSaveFile(f, s);
         public string? AskOpenFile(string f) => _get().AskOpenFile(f);
+        public string? AskFilePath(string f, string s) => _get().AskFilePath(f, s);
         public string? BrowseFolder(string? s) => _get().BrowseFolder(s);
     }
 }

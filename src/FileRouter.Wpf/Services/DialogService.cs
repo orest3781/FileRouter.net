@@ -31,6 +31,17 @@ public sealed class DialogService : IDialogService
         return dlg.ShowDialog(_owner) == true ? dlg.FileName : null;
     }
 
+    public string? AskFilePath(string filter, string suggestedName)
+    {
+        var dlg = new OpenFileDialog
+        {
+            Filter = filter,
+            FileName = suggestedName,
+            CheckFileExists = false,   // a NEW db path is a valid answer
+        };
+        return dlg.ShowDialog(_owner) == true ? dlg.FileName : null;
+    }
+
     public string? BrowseFolder(string? startAt)
     {
         var dlg = new OpenFolderDialog();
