@@ -71,15 +71,5 @@
         <Button Content="Start Processing" Command="{Binding StartCommand}"
                 Style="{StaticResource PrimaryButton}" Height="48" Margin="0,14,0,0"
                 FontSize="15" />
-        <!-- rescan as a compact refresh icon — the count refreshes itself via
-             the watcher/poll anyway; this is the impatient-click for network
-             shares. Named for the screen reader, tooltipped for everyone else. -->
-        <Button Command="{Binding RescanCommand}" Width="44" Height="36"
-                Margin="0,8,0,0" HorizontalAlignment="Center"
-                ToolTip="Rescan the inbox now"
-                AutomationProperties.Name="Rescan inbox">
-            <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="15"
-                       HorizontalAlignment="Center" VerticalAlignment="Center" />
-        </Button>
     </StackPanel>
 </UserControl>

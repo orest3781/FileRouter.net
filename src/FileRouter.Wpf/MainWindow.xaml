@@ -11,7 +11,39 @@
         <KeyBinding Key="Escape" Command="{Binding StopCommand}" />
     </Window.InputBindings>
     <DockPanel>
-        <Menu DockPanel.Dock="Top" Padding="4,2">
+        <Grid DockPanel.Dock="Top" Background="{DynamicResource Theme.WindowBg}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- rescan lives in the header, top-right — always in the same
+                 spot, hidden while filing (Stop/Esc is the deliberate way
+                 out of a session; a stray refresh must not end it) -->
+            <Button Grid.Column="1" Command="{Binding RescanCommand}"
+                    Width="36" Height="26" Margin="0,2,6,2"
+                    ToolTip="Rescan the inbox now"
+                    AutomationProperties.Name="Rescan inbox">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="Background" Value="Transparent" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsProcessing}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background"
+                                        Value="{DynamicResource Theme.SurfaceHover}" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+                <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Button>
+
+            <Menu Padding="4,2">
             <MenuItem Header="_File">
                 <MenuItem Header="_Settings…" Click="OnSettings" InputGestureText="Ctrl+," />
                 <Separator />
@@ -26,7 +58,8 @@
                 <MenuItem Header="_Bulk rename…" Click="OnBulkRename" />
                 <MenuItem Header="_Match and merge…" Click="OnMatchMerge" />
             </MenuItem>
-        </Menu>
+            </Menu>
+        </Grid>
 
         <!-- set-aside banner: a full-width filled warning bar on every screen
              while deferred files exist — the old thin status-bar text was too
