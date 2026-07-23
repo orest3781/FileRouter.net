@@ -15,6 +15,7 @@ public partial class TriageWindow : Window
     private readonly List<MatchMerge.MatchResult> _items;
     private readonly IReadOnlyList<string> _headers;
     private readonly WebViewPdfViewer _pdf;
+    private readonly Func<System.Windows.Rect?> _panZone;
     private int _index;
 
     public List<BulkRename.RenameOutcome> Outcomes { get; } = new();
@@ -24,7 +25,22 @@ public partial class TriageWindow : Window
         InitializeComponent();
         _items = items;
         _headers = headers;
+        Viewer.CreationProperties = new Microsoft.Web.WebView2.Wpf.CoreWebView2CreationProperties
+        {
+            AdditionalBrowserArguments = "--disable-smooth-scrolling",
+        };
         _pdf = new WebViewPdfViewer(Viewer);
+        _panZone = () =>
+        {
+            if (!IsActive || !Viewer.IsVisible) return null;
+            var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(Viewer);
+            var topLeft = Viewer.PointToScreen(new System.Windows.Point(0, 0));
+            var device = new System.Windows.Rect(topLeft.X, topLeft.Y,
+                Viewer.ActualWidth * dpi.DpiScaleX, Viewer.ActualHeight * dpi.DpiScaleY);
+            return PanMath.PanZone(device, dpi.DpiScaleX, dpi.DpiScaleY);
+        };
+        ViewerInputEnhancer.Register(_panZone);
+        Closed += (_, _) => ViewerInputEnhancer.Unregister(_panZone);
         foreach (var h in _headers)
             Candidates.Columns.Add(new DataGridTextColumn
             {

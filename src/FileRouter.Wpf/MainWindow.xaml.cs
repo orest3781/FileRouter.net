@@ -13,9 +13,17 @@ public partial class MainWindow : Window
     internal IDialogService Dialogs { get; set; }
     internal WebViewPdfViewer Pdf => _pdf;
 
+    private readonly Func<System.Windows.Rect?> _panZone;
+
     public MainWindow(Config cfg, string cfgPath)
     {
         InitializeComponent();
+        // immediate scrolls instead of animated ones — left-drag panning
+        // converts to wheel messages and must track the hand directly
+        Viewer.CreationProperties = new Microsoft.Web.WebView2.Wpf.CoreWebView2CreationProperties
+        {
+            AdditionalBrowserArguments = "--disable-smooth-scrolling",
+        };
         _pdf = new WebViewPdfViewer(Viewer);
         Dialogs = new DialogService(this);
         _watch = new FolderWatchService(context: SynchronizationContext.Current);
@@ -52,18 +60,37 @@ public partial class MainWindow : Window
             new Mvvm.RelayCommand(() => OnSettings(this, new RoutedEventArgs())),
             System.Windows.Input.Key.OemComma, System.Windows.Input.ModifierKeys.Control));
 
+        _panZone = ViewerPanZone;
         Loaded += async (_, _) =>
         {
+            ViewerInputEnhancer.Register(_panZone);
             if (!await _pdf.InitAsync())
                 Dialogs.Warn(
                     "The PDF viewer (WebView2) failed to start:\n\n" + _pdf.InitError,
                     "FileRouter");
             Shell.Initialize();
         };
-        Closed += (_, _) => { _watch.Dispose(); Shell.Dispose(); };
+        Closed += (_, _) =>
+        {
+            ViewerInputEnhancer.Unregister(_panZone);
+            _watch.Dispose();
+            Shell.Dispose();
+        };
     }
 
     private void OnExit(object sender, RoutedEventArgs e) => Close();
+
+    /// <summary>Where left-drag pans and Shift+scroll zooms: the viewer's
+    /// document area while a session is running, in device pixels.</summary>
+    private System.Windows.Rect? ViewerPanZone()
+    {
+        if (_compact || !Shell.IsProcessing || !IsActive || !Viewer.IsVisible) return null;
+        var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(Viewer);
+        var topLeft = Viewer.PointToScreen(new System.Windows.Point(0, 0));
+        var device = new System.Windows.Rect(topLeft.X, topLeft.Y,
+            Viewer.ActualWidth * dpi.DpiScaleX, Viewer.ActualHeight * dpi.DpiScaleY);
+        return PanMath.PanZone(device, dpi.DpiScaleX, dpi.DpiScaleY);
+    }
 
     // ------------------------------------------------ compact/normal modes
     private Rect? _normalBounds;
