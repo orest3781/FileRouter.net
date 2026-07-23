@@ -21,9 +21,8 @@
                  spot, hidden while filing (Stop/Esc is the deliberate way
                  out of a session; a stray refresh must not end it) -->
             <Button Grid.Column="1" Command="{Binding RescanCommand}"
-                    Width="36" Height="26" Margin="0,2,6,2"
-                    ToolTip="Rescan the inbox now"
-                    AutomationProperties.Name="Rescan inbox">
+                    Content="Refresh" Height="26" Padding="10,0" Margin="0,2,6,2"
+                    ToolTip="Rescan the inbox now">
                 <Button.Style>
                     <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
                         <Setter Property="BorderThickness" Value="0" />
@@ -39,10 +38,6 @@
                         </Style.Triggers>
                     </Style>
                 </Button.Style>
-                <!-- E895 "Sync" reads as refresh far better at small sizes
-                     than E72C; Fluent Icons (Win11) with MDL2 fallback -->
-                <TextBlock Text="&#xE895;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
-                           FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Button>
 
             <Menu Padding="4,2">
