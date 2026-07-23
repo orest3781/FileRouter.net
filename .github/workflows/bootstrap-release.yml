@@ -1,0 +1,37 @@
+name: Bootstrap Initial Release
+
+# Runs once when this workflow file first lands on the PR branch.
+# Creates the v1.0.0 tag and triggers the Release workflow via workflow_dispatch.
+on:
+  push:
+    branches:
+      - 'copilot/merge-release-workflow-changes'
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if v1.0.0 already exists
+        id: check
+        run: |
+          if git ls-remote --tags origin refs/tags/v1.0.0 | grep -q v1.0.0; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create and push v1.0.0 tag
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag v1.0.0
+          git push origin v1.0.0
