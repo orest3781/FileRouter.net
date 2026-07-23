@@ -112,8 +112,82 @@ public sealed class WatchEditVm : ObservableObject
         get => _path;
         set { if (Set(ref _path, value)) Raise(nameof(Problem)); }
     }
-    public string Filetypes { get => _filetypes; set => Set(ref _filetypes, value); }
+
+    public string Filetypes
+    {
+        get => _filetypes;
+        set { if (Set(ref _filetypes, value)) RaiseTypeFlags(); }
+    }
     public bool Recursive { get => _recursive; set => Set(ref _recursive, value); }
+
+    // ---- file types as checkboxes -----------------------------------------
+    // The config string stays the source of truth (round-trips anything a
+    // hand-edited config says); these are just friendlier handles on it.
+    private static readonly string[] PdfGroup = { "pdf" };
+    private static readonly string[] TiffGroup = { "tif", "tiff" };
+    private static readonly string[] JpegGroup = { "jpg", "jpeg" };
+    private static readonly string[] PngGroup = { "png" };
+    private static readonly string[] CanonicalOrder = { "pdf", "tif", "tiff", "jpg", "jpeg", "png" };
+
+    private HashSet<string> Types => FolderMonitor.ParseFiletypes(Filetypes);
+
+    /// <summary>Blank list = the folder counts every file.</summary>
+    public bool AnyType
+    {
+        get => Types.Count == 0;
+        set
+        {
+            if (value) Filetypes = "";
+            else if (Types.Count == 0) Filetypes = "pdf";   // the sane default here
+        }
+    }
+
+    public bool TypePdf { get => Has(PdfGroup); set => Toggle(PdfGroup, value); }
+    public bool TypeTiff { get => Has(TiffGroup); set => Toggle(TiffGroup, value); }
+    public bool TypeJpeg { get => Has(JpegGroup); set => Toggle(JpegGroup, value); }
+    public bool TypePng { get => Has(PngGroup); set => Toggle(PngGroup, value); }
+
+    /// <summary>Extensions outside the checkbox groups ("docx, xps").</summary>
+    public string OtherTypes
+    {
+        get => string.Join(", ", Types.Where(t => !CanonicalOrder.Contains(t)).OrderBy(t => t));
+        set
+        {
+            var keep = Types.Where(t => CanonicalOrder.Contains(t));
+            Filetypes = JoinCanonical(keep.Concat(FolderMonitor.ParseFiletypes(value)));
+        }
+    }
+
+    private bool Has(string[] group) => group.Any(Types.Contains);
+
+    private void Toggle(string[] group, bool on)
+    {
+        var types = Types;
+        foreach (var t in group)
+        {
+            if (on) types.Add(t);
+            else types.Remove(t);
+        }
+        Filetypes = JoinCanonical(types);
+    }
+
+    private static string JoinCanonical(IEnumerable<string> types)
+    {
+        var set = new HashSet<string>(types, StringComparer.OrdinalIgnoreCase);
+        var ordered = CanonicalOrder.Where(set.Contains)
+            .Concat(set.Where(t => !CanonicalOrder.Contains(t.ToLowerInvariant())).OrderBy(t => t));
+        return string.Join(", ", ordered);
+    }
+
+    private void RaiseTypeFlags()
+    {
+        Raise(nameof(AnyType));
+        Raise(nameof(TypePdf));
+        Raise(nameof(TypeTiff));
+        Raise(nameof(TypeJpeg));
+        Raise(nameof(TypePng));
+        Raise(nameof(OtherTypes));
+    }
 
     /// <summary>Live folder check (parity with the route detail panel).</summary>
     public string Problem

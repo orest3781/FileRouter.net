@@ -404,6 +404,51 @@ public class SettingsViewModelTests : IDisposable
     }
 
     [Fact]
+    public void FiletypeCheckboxesReadAndWriteTheConfigString()
+    {
+        var w = new WatchEditVm { Filetypes = "pdf, tif" };
+        Assert.False(w.AnyType);
+        Assert.True(w.TypePdf);
+        Assert.True(w.TypeTiff);    // "tif" alone lights the TIFF group
+        Assert.False(w.TypeJpeg);
+        Assert.Equal("", w.OtherTypes);
+
+        w.TypeJpeg = true;          // group adds both extensions
+        Assert.Equal("pdf, tif, jpg, jpeg", w.Filetypes);
+
+        w.TypePdf = false;
+        Assert.Equal("tif, jpg, jpeg", w.Filetypes);
+    }
+
+    [Fact]
+    public void AnyTypeClearsAndUncheckingItDefaultsToPdf()
+    {
+        var w = new WatchEditVm { Filetypes = "pdf, png" };
+        w.AnyType = true;
+        Assert.Equal("", w.Filetypes);
+        Assert.True(w.AnyType);
+
+        w.AnyType = false;
+        Assert.Equal("pdf", w.Filetypes);
+    }
+
+    [Fact]
+    public void OtherTypesMergeWithoutTouchingTheCheckboxGroups()
+    {
+        var w = new WatchEditVm { Filetypes = "pdf, docx" };
+        Assert.Equal("docx", w.OtherTypes);   // hand-edited config keeps working
+        Assert.True(w.TypePdf);
+
+        w.OtherTypes = "xps, docx";
+        Assert.Equal("pdf, docx, xps", w.Filetypes);
+        Assert.True(w.TypePdf);
+
+        w.TypeTiff = true;                    // toggling a group keeps others
+        Assert.Equal("pdf, tif, tiff, docx, xps", w.Filetypes);
+        Assert.Equal("docx, xps", w.OtherTypes);
+    }
+
+    [Fact]
     public void TilePreviewShowsTheRealFolderState()
     {
         var watched = Path.Combine(_dir, "watched");
