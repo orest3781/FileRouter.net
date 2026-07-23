@@ -127,9 +127,9 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="16,8">
                         <TextBlock Text="Naming" FontWeight="Bold" Margin="0,0,0,10" />
-                        <RadioButton Content="Keep date + ID — the typed name goes between them"
+                        <RadioButton Content="Insert at the -- — the typed name replaces the first -- in the filename"
                                      IsChecked="{Binding InsertMode}" />
-                        <RadioButton Content="Name only — the typed name becomes the whole filename"
+                        <RadioButton Content="Full replace — the typed name becomes the whole filename"
                                      IsChecked="{Binding InsertMode, Converter={StaticResource InvertBool}}" />
                         <!-- one live example tying mode + UPPERCASE + separator together -->
                         <Border Background="{DynamicResource Theme.Surface}"

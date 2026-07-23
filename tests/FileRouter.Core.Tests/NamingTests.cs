@@ -14,13 +14,17 @@ public class NamingTests
         Naming.BuildTarget(Orig, typed, routeMode, globalMode, suffix,
             appendSuffix, exists ?? Never);
 
-    // ---- inbox pattern ----
+    // ---- inbox pattern: any PDF with "--" in the stem ----
     [Theory]
     [InlineData("20240115--1234567890.pdf", true)]
     [InlineData("20240115--1234567890.PDF", true)]
     [InlineData("20240115--1.pdf", true)]
-    [InlineData("20240115-1234567890.pdf", false)]   // single hyphen
-    [InlineData("2024011--1234567890.pdf", false)]   // short date
+    [InlineData("REFERRAL--SMITH CLINIC.pdf", true)]   // any left--right shape
+    [InlineData("a--b.pdf", true)]
+    [InlineData("A--B--C.pdf", true)]
+    [InlineData("20240115-1234567890.pdf", false)]     // single hyphen
+    [InlineData("--edge.pdf", false)]                  // nothing before the --
+    [InlineData("edge--.pdf", false)]                  // nothing after the --
     [InlineData("scan_001.pdf", false)]
     public void InboxPattern(string name, bool matches) =>
         Assert.Equal(matches, Naming.InboxRegex().IsMatch(name));
@@ -41,10 +45,26 @@ public class NamingTests
             Build("SMITH JOHN", "insert", routeMode: "replace").Filename);
 
     [Fact]
-    public void InsertOnNonMatchingNameThrows() =>
+    public void InsertOnNameWithoutDoubleDashThrows() =>
         Assert.Throws<ArgumentException>(() =>
             Naming.BuildTarget("scan_001.pdf", "SMITH JOHN", null, "insert",
                 "", false, Never));
+
+    // insert works for ANY left--right filename, not just YYYYMMDD--ID
+    [Theory]
+    [InlineData("REFERRAL--SMITH CLINIC.pdf", "REFERRAL-JONES AMY-SMITH CLINIC.pdf")]
+    [InlineData("a--b.pdf", "a-JONES AMY-b.pdf")]
+    [InlineData("A--B--C.pdf", "A-JONES AMY-B--C.pdf")]   // only the FIRST --
+    public void InsertSplicesAtTheFirstDoubleDash(string original, string expected) =>
+        Assert.Equal(expected,
+            Naming.BuildTarget(original, "JONES AMY", null, "insert",
+                "", false, Never).Filename);
+
+    [Fact]
+    public void InsertBlankNameKeepsAnyOriginal() =>
+        Assert.Equal("REFERRAL--SMITH CLINIC.pdf",
+            Naming.BuildTarget("REFERRAL--SMITH CLINIC.pdf", "", null, "insert",
+                "", false, Never).Filename);
 
     // ---- typed .pdf extension ----
     [Fact]

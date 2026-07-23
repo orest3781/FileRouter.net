@@ -175,8 +175,8 @@ public sealed class SettingsViewModel : ObservableObject
     public static readonly KeyValuePair<string, string>[] ModeChoices =
     {
         new("", "(session default)"),
-        new("insert", "Keep date + ID"),
-        new("replace", "Name only"),
+        new("insert", "Insert at the --"),
+        new("replace", "Full replace"),
     };
 
     /// <summary>Curated tile/button palette (all pair with black or white at

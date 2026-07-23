@@ -18,8 +18,10 @@ public static partial class Naming
     public const string ModeReplace = "replace";
     public static readonly string[] Modes = { ModeInsert, ModeReplace };
 
-    // Inbox contract: YYYYMMDD--<digits>.pdf
-    [GeneratedRegex(@"^(\d{8})--(\d+)\.pdf$", RegexOptions.IgnoreCase)]
+    // Inbox contract: any PDF with "--" in the stem (something on each side).
+    // Insert mode splices the typed name at the FIRST "--"; the classic
+    // YYYYMMDD--ID fax names are just one instance of the pattern.
+    [GeneratedRegex(@"^.+--.+\.pdf$", RegexOptions.IgnoreCase)]
     public static partial Regex InboxRegex();
 
     // Characters Windows can't put in a filename, plus control chars. The
@@ -75,11 +77,13 @@ public static partial class Naming
             return StripPdfExt(originalFilename);
         if (mode == ModeReplace)
             return name;
-        var m = InboxRegex().Match(originalFilename);
-        if (!m.Success)
+        // insert: the typed name replaces the FIRST "--" (ABC--123 -> ABC-NAME-123)
+        var stem = StripPdfExt(originalFilename);
+        var split = stem.IndexOf("--", StringComparison.Ordinal);
+        if (split <= 0 || split + 2 >= stem.Length)
             throw new ArgumentException(
-                $"insert mode needs a YYYYMMDD--ID filename, got '{originalFilename}'");
-        return $"{m.Groups[1].Value}-{name}-{m.Groups[2].Value}";
+                $"Insert mode needs '--' in the filename, got '{originalFilename}'");
+        return $"{stem[..split]}-{name}-{stem[(split + 2)..]}";
     }
 
     /// <summary>Throw if <paramref name="stem"/> can't be a Windows filename.

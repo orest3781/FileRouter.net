@@ -36,6 +36,20 @@ public class FilingLoopTests
     }
 
     [Fact]
+    public async Task AnyDoubleDashNameFlowsThroughTheWholeLoop()
+    {
+        // the -- contract is general: not just YYYYMMDD--ID fax names
+        using var fx = Started("REFERRAL--ACME CLINIC.pdf");
+        Assert.Equal("1 / 1", fx.Shell.ProgressLine);   // it entered the queue
+
+        fx.Shell.TypedName = "SMITH JOHN";    // fixture config defaults to insert mode
+        Assert.Equal("REFERRAL-SMITH JOHN-ACME CLINIC.pdf", fx.Shell.Preview);
+
+        await fx.Shell.OnRouteAsync(0);
+        Assert.True(File.Exists(Path.Combine(fx.RouteDir, "REFERRAL-SMITH JOHN-ACME CLINIC.pdf")));
+    }
+
+    [Fact]
     public async Task BlankCommitKeepsTheOriginalName()
     {
         using var fx = Started("20240115--111111.pdf");
