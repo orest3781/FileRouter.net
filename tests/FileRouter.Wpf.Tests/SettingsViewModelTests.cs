@@ -301,6 +301,160 @@ public class SettingsViewModelTests : IDisposable
     }
 
     [Fact]
+    public void WatchFolderProblemNotesSurfaceLive()
+    {
+        var vm = new SettingsViewModel(new Config
+        {
+            Inbox = _dir,
+            WatchFolders = { new WatchFolder { Label = "W", Path = Path.Combine(_dir, "missing") } },
+        }, _dialogs);
+        Assert.Contains("doesn't exist", vm.WatchFolders[0].Problem);
+
+        vm.WatchFolders[0].Path = _dir;
+        Assert.Equal("", vm.WatchFolders[0].Problem);
+        vm.WatchFolders[0].Path = "";
+        Assert.Contains("no folder", vm.WatchFolders[0].Problem);
+    }
+
+    [Fact]
+    public void CreateWatchFolderMakesTheDirectoryAndClearsTheNote()
+    {
+        var missing = Path.Combine(_dir, "new", "deep");
+        var vm = new SettingsViewModel(new Config
+        {
+            Inbox = _dir,
+            WatchFolders = { new WatchFolder { Label = "W", Path = missing } },
+        }, _dialogs);
+        vm.SelectedWatch = vm.WatchFolders[0];
+        Assert.Contains("doesn't exist", vm.SelectedWatch.Problem);
+
+        vm.CreateWatchFolderCommand.Execute(null);
+        Assert.True(Directory.Exists(missing));
+        Assert.Equal("", vm.SelectedWatch.Problem);
+        Assert.Empty(_dialogs.Warnings);
+    }
+
+    [Fact]
+    public void OpenFolderOnAMissingPathWarnsInsteadOfThrowing()
+    {
+        var vm = new SettingsViewModel(new Config
+        {
+            Inbox = _dir,
+            Routes = { new Route { Label = "A", Path = Path.Combine(_dir, "nope") } },
+        }, _dialogs);
+        vm.SelectedRoute = vm.Routes[0];
+        vm.OpenRouteFolderCommand.Execute(null);
+        Assert.Single(_dialogs.Warnings);
+    }
+
+    [Fact]
+    public void DuplicateRouteCopiesEverythingButTheHotkey()
+    {
+        var cfg = new Config
+        {
+            Inbox = _dir,
+            Routes =
+            {
+                new Route
+                {
+                    Label = "Invoices", Path = _dir, Hotkey = "Ctrl+5",
+                    Suffix = "_INV", AppendSuffix = true, Color = "#2e7d32",
+                    NamingMode = "replace",
+                },
+                new Route { Label = "Other", Path = _dir },
+            },
+        };
+        var vm = new SettingsViewModel(cfg, _dialogs);
+        vm.SelectedRoute = vm.Routes[0];
+        vm.DuplicateRouteCommand.Execute(null);
+
+        Assert.Equal(3, vm.Routes.Count);
+        var copy = vm.Routes[1];               // inserted right after the original
+        Assert.Same(copy, vm.SelectedRoute);   // and selected for tweaking
+        Assert.Equal("Invoices copy", copy.Label);
+        Assert.Equal(_dir, copy.Path);
+        Assert.Equal("_INV", copy.Suffix);
+        Assert.True(copy.AppendSuffix);
+        Assert.Equal("#2e7d32", copy.Color);
+        Assert.Equal("replace", copy.NamingMode);
+        Assert.Equal("", copy.Hotkey);         // a copied hotkey would collide
+        Assert.Equal("Ctrl+2", copy.GestureText);   // fallback for its slot
+    }
+
+    [Fact]
+    public void GestureTextTracksReordering()
+    {
+        var cfg = new Config
+        {
+            Inbox = _dir,
+            Routes =
+            {
+                new Route { Label = "A", Path = _dir },
+                new Route { Label = "B", Path = _dir },
+            },
+        };
+        var vm = new SettingsViewModel(cfg, _dialogs);
+        Assert.Equal("Ctrl+1", vm.Routes[0].GestureText);
+        Assert.Equal("Ctrl+2", vm.Routes[1].GestureText);
+
+        vm.Routes.Move(1, 0);   // same path drag-drop reordering uses
+        Assert.Equal("B", vm.Routes[0].Label);
+        Assert.Equal("Ctrl+1", vm.Routes[0].GestureText);
+        Assert.Equal("Ctrl+2", vm.Routes[1].GestureText);
+    }
+
+    [Fact]
+    public void TilePreviewShowsTheRealFolderState()
+    {
+        var watched = Path.Combine(_dir, "watched");
+        Directory.CreateDirectory(watched);
+        File.WriteAllText(Path.Combine(watched, "a.pdf"), "x");
+        File.WriteAllText(Path.Combine(watched, "URGENT-fax.pdf"), "x");
+
+        var vm = new SettingsViewModel(new Config
+        {
+            Inbox = _dir,
+            AlertTexts = { "URGENT" },
+            WatchFolders =
+            {
+                new WatchFolder { Label = "Failed", Path = watched, Color = "#1565c0" },
+            },
+        }, _dialogs);
+        vm.SelectedWatch = vm.WatchFolders[0];
+
+        Assert.True(vm.TilePreviewVisible);
+        Assert.Equal("Failed", vm.TilePreviewLabel);
+        Assert.Equal("2 ⚠", vm.TilePreviewCount);
+        Assert.Equal(FileRouter.Wpf.Theme.ThemePalette.Light.Danger, vm.TilePreviewBack);
+        Assert.Contains("alerting right now", vm.TilePreviewHint);
+
+        // clearing the alert terms live drops the alert state and the color
+        vm.AlertTextsText = "";
+        Assert.Equal("2", vm.TilePreviewCount);
+        Assert.Equal(new FileRouter.Wpf.Theme.Rgb(21, 101, 192), vm.TilePreviewBack);
+        Assert.Equal("", vm.TilePreviewHint);
+    }
+
+    [Fact]
+    public void TilePreviewExplainsEmptyAndMissingFolders()
+    {
+        var vm = new SettingsViewModel(new Config
+        {
+            Inbox = _dir,
+            WatchFolders = { new WatchFolder { Label = "W", Path = Path.Combine(_dir, "gone") } },
+        }, _dialogs);
+        vm.SelectedWatch = vm.WatchFolders[0];
+        Assert.Equal("⚠", vm.TilePreviewCount);
+        Assert.Contains("not available", vm.TilePreviewHint);
+
+        vm.SelectedWatch.Path = _dir;   // exists, empty of matching files? _dir has dirs only
+        Assert.Contains("only appears", vm.TilePreviewHint);
+
+        vm.SelectedWatch = null;
+        Assert.False(vm.TilePreviewVisible);
+    }
+
+    [Fact]
     public void ThemeModeRoundTripsThroughTheRadiosIntoTheResult()
     {
         var vm = new SettingsViewModel(new Config { Inbox = _dir }, _dialogs);

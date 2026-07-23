@@ -82,6 +82,66 @@ public partial class SettingsWindow : Window
         _vm.UiFontSizeText = Math.Clamp(current + delta, 6, 72).ToString();
     }
 
+    // ------------------------------------------- list drag-and-drop reorder
+    private Point _dragStart;
+    private object? _dragItem;
+
+    private static object? RowItemAt(ListBox list, object? origin)
+    {
+        var node = origin as DependencyObject;
+        while (node is not null and not ListBoxItem)
+            node = System.Windows.Media.VisualTreeHelper.GetParent(node);
+        return node is ListBoxItem item && list.ItemContainerGenerator.ItemFromContainer(item)
+            is { } data && data != DependencyProperty.UnsetValue ? data : null;
+    }
+
+    private void List_DragArm(object sender, MouseButtonEventArgs e)
+    {
+        _dragStart = e.GetPosition(null);
+        _dragItem = RowItemAt((ListBox)sender, e.OriginalSource);
+    }
+
+    private void List_DragMove(object sender, MouseEventArgs e)
+    {
+        if (_dragItem is null || e.LeftButton != MouseButtonState.Pressed) return;
+        var moved = e.GetPosition(null) - _dragStart;
+        if (Math.Abs(moved.X) < SystemParameters.MinimumHorizontalDragDistance
+            && Math.Abs(moved.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+        var item = _dragItem;
+        _dragItem = null;
+        DragDrop.DoDragDrop((ListBox)sender, item, DragDropEffects.Move);
+    }
+
+    private void List_DragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = DragDropEffects.Move;
+        e.Handled = true;
+    }
+
+    private void List_Drop(object sender, DragEventArgs e)
+    {
+        var list = (ListBox)sender;
+        var over = RowItemAt(list, e.OriginalSource);
+        if (list == RouteList && e.Data.GetData(typeof(RouteEditVm)) is RouteEditVm route)
+        {
+            MoveWithin(_vm.Routes, route, over as RouteEditVm);
+            _vm.SelectedRoute = route;
+        }
+        else if (list == WatchList && e.Data.GetData(typeof(WatchEditVm)) is WatchEditVm watch)
+        {
+            MoveWithin(_vm.WatchFolders, watch, over as WatchEditVm);
+            _vm.SelectedWatch = watch;
+        }
+    }
+
+    private static void MoveWithin<T>(System.Collections.ObjectModel.ObservableCollection<T> items,
+        T dragged, T? target) where T : class
+    {
+        var from = items.IndexOf(dragged);
+        var to = target is null ? items.Count - 1 : items.IndexOf(target);
+        if (from >= 0 && to >= 0 && from != to) items.Move(from, to);
+    }
+
     private void OnAddPassword(object sender, RoutedEventArgs e)
     {
         if (!_vm.AddPassword(NewPwLabel.Text, NewPwValue.Password))

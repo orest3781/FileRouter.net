@@ -36,10 +36,16 @@ public sealed class RouteEditVm : ObservableObject
     public string Problem => Config.ValidateRoute(new Route { Path = Path });
     public bool ColorValid => Color.Length == 0 || ThemePalette.ParseColor(Color) is not null;
 
+    internal void RefreshProblem() => Raise(nameof(Problem));
+
     // Derived by SettingsViewModel.RecomputeRouteDerived (it knows the route's
     // position, which decides the Ctrl+1-9 fallback and duplicate detection).
     private string _previewLabel = "";
     public string PreviewLabel { get => _previewLabel; private set => Set(ref _previewLabel, value); }
+
+    /// <summary>The effective hotkey, shown right-aligned in the route list.</summary>
+    private string _gestureText = "";
+    public string GestureText { get => _gestureText; private set => Set(ref _gestureText, value); }
 
     private Rgb _previewBack;
     public Rgb PreviewBack { get => _previewBack; private set => Set(ref _previewBack, value); }
@@ -55,12 +61,14 @@ public sealed class RouteEditVm : ObservableObject
     }
     public bool HasHotkeyNote => HotkeyNote.Length > 0;
 
-    internal void SetDerived(string previewLabel, Rgb back, Rgb fore, string hotkeyNote)
+    internal void SetDerived(string previewLabel, Rgb back, Rgb fore,
+        string hotkeyNote, string gestureText)
     {
         PreviewLabel = previewLabel;
         PreviewBack = back;
         PreviewFore = fore;
         HotkeyNote = hotkeyNote;
+        GestureText = gestureText;
     }
 
     /// <summary>Unknown per-route keys from the original config, carried
@@ -99,9 +107,26 @@ public sealed class WatchEditVm : ObservableObject
     private bool _recursive;
 
     public string Label { get => _label; set => Set(ref _label, value); }
-    public string Path { get => _path; set => Set(ref _path, value); }
+    public string Path
+    {
+        get => _path;
+        set { if (Set(ref _path, value)) Raise(nameof(Problem)); }
+    }
     public string Filetypes { get => _filetypes; set => Set(ref _filetypes, value); }
     public bool Recursive { get => _recursive; set => Set(ref _recursive, value); }
+
+    /// <summary>Live folder check (parity with the route detail panel).</summary>
+    public string Problem
+    {
+        get
+        {
+            var p = Path.Trim();
+            if (p.Length == 0) return "no folder chosen yet";
+            return Directory.Exists(p) ? "" : $"folder doesn't exist: {p}";
+        }
+    }
+
+    internal void RefreshProblem() => Raise(nameof(Problem));
 
     public string Color
     {
@@ -233,6 +258,17 @@ public sealed class SettingsViewModel : ObservableObject
         RemoveRouteCommand = new RelayCommand(
             () => { if (SelectedRoute is { } r) Routes.Remove(r); SelectedRoute = Routes.FirstOrDefault(); },
             () => SelectedRoute is not null);
+        DuplicateRouteCommand = new RelayCommand(() =>
+        {
+            if (SelectedRoute is not { } src) return;
+            // a sibling to tweak: everything copied except the hotkey (a
+            // duplicate hotkey would collide the moment it lands)
+            var copy = RouteEditVm.From(src.ToRoute());
+            copy.Label = src.Label.Trim() + " copy";
+            copy.Hotkey = "";
+            Routes.Insert(Routes.IndexOf(src) + 1, copy);
+            SelectedRoute = copy;
+        }, () => SelectedRoute is not null);
         RouteUpCommand = new RelayCommand(() => MoveRoute(-1), () => CanMoveRoute(-1));
         RouteDownCommand = new RelayCommand(() => MoveRoute(+1), () => CanMoveRoute(+1));
 
@@ -269,22 +305,49 @@ public sealed class SettingsViewModel : ObservableObject
         {
             if (SelectedWatch is { } w) w.Path = _dialogs.BrowseFolder(w.Path) ?? w.Path;
         });
+        CreateRouteFolderCommand = new RelayCommand(() =>
+            CreateFolder(SelectedRoute?.Path, () => SelectedRoute?.RefreshProblem()));
+        OpenRouteFolderCommand = new RelayCommand(() => OpenFolderOrExplain(SelectedRoute?.Path));
+        CreateWatchFolderCommand = new RelayCommand(() =>
+            CreateFolder(SelectedWatch?.Path, () =>
+            {
+                SelectedWatch?.RefreshProblem();
+                RecomputeTilePreview();
+            }));
+        OpenWatchFolderCommand = new RelayCommand(() => OpenFolderOrExplain(SelectedWatch?.Path));
 
         SelectedRoute = Routes.FirstOrDefault();
         SelectedWatch = WatchFolders.FirstOrDefault();
         SelectedPassword = Passwords.FirstOrDefault();
 
         // live route previews + duplicate-hotkey notes: recompute whenever a
-        // route field or the route order changes
+        // route field or the route order changes. Move actions re-deliver the
+        // item in NewItems — hooking it again would stack subscriptions.
         foreach (var r in Routes) HookRoute(r);
         Routes.CollectionChanged += (_, e) =>
         {
-            if (e.NewItems is not null)
+            if (e.Action != System.Collections.Specialized.NotifyCollectionChangedAction.Move
+                && e.NewItems is not null)
                 foreach (RouteEditVm r in e.NewItems) HookRoute(r);
             RecomputeRouteDerived();
         };
         RecomputeRouteDerived();
+
+        // live tile preview: recompute when the selected watch folder's fields
+        // or the alert terms change
+        foreach (var w in WatchFolders) HookWatch(w);
+        WatchFolders.CollectionChanged += (_, e) =>
+        {
+            if (e.Action != System.Collections.Specialized.NotifyCollectionChangedAction.Move
+                && e.NewItems is not null)
+                foreach (WatchEditVm w in e.NewItems) HookWatch(w);
+            RecomputeTilePreview();
+        };
+        RecomputeTilePreview();
     }
+
+    private void HookWatch(WatchEditVm w) =>
+        w.PropertyChanged += (_, _) => RecomputeTilePreview();
 
     private void HookRoute(RouteEditVm r) =>
         r.PropertyChanged += (_, e) =>
@@ -326,7 +389,7 @@ public sealed class SettingsViewModel : ObservableObject
             var label = r.Label
                 + (r.AppendSuffix && r.Suffix.Length > 0 ? $"   ·   {r.Suffix}" : "")
                 + (gestureText.Length > 0 ? $"   ·   {gestureText}" : "");
-            r.SetDerived(label, back, fore, note);
+            r.SetDerived(label, back, fore, note, gestureText);
         }
     }
 
@@ -396,6 +459,39 @@ public sealed class SettingsViewModel : ObservableObject
         if (p.Length == 0) return blankMeans;
         if (!Path.IsPathRooted(p)) return "relative — resolved beside the config file";
         return Directory.Exists(p) ? "" : $"folder doesn't exist: {p}";
+    }
+
+    /// <summary>One-click fix for "folder doesn't exist" — creates the whole
+    /// tree; failures come back as a dialog, not a crash.</summary>
+    private void CreateFolder(string? path, Action refresh)
+    {
+        var p = path?.Trim() ?? "";
+        if (p.Length == 0)
+        {
+            _dialogs.Warn("Pick a folder path first.", "FileRouter");
+            return;
+        }
+        try
+        {
+            Directory.CreateDirectory(p);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+                                   or ArgumentException or NotSupportedException)
+        {
+            _dialogs.Warn($"Couldn't create {p}: {ex.Message}", "FileRouter");
+            return;
+        }
+        refresh();
+    }
+
+    private void OpenFolderOrExplain(string? path)
+    {
+        var p = path?.Trim() ?? "";
+        if (p.Length > 0 && Directory.Exists(p))
+            System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo(p) { UseShellExecute = true });
+        else
+            _dialogs.Warn("That folder doesn't exist yet.", "FileRouter");
     }
 
     public RelayCommand OpenBackupsCommand => _openBackups ??= new RelayCommand(() =>
@@ -477,7 +573,73 @@ public sealed class SettingsViewModel : ObservableObject
     public bool FlashAlerts { get => _flashAlerts; set => Set(ref _flashAlerts, value); }
 
     private string _alertTextsText = "";
-    public string AlertTextsText { get => _alertTextsText; set => Set(ref _alertTextsText, value); }
+    public string AlertTextsText
+    {
+        get => _alertTextsText;
+        set { if (Set(ref _alertTextsText, value)) RecomputeTilePreview(); }
+    }
+
+    private List<string> ParseAlertTerms() => AlertTextsText
+        .Split(new[] { '\r', '\n', ',' },
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .ToList();
+
+    // ------------------------------------------------------ live tile preview
+    private bool _tilePreviewVisible;
+    public bool TilePreviewVisible { get => _tilePreviewVisible; private set => Set(ref _tilePreviewVisible, value); }
+
+    private string _tilePreviewLabel = "";
+    public string TilePreviewLabel { get => _tilePreviewLabel; private set => Set(ref _tilePreviewLabel, value); }
+
+    private string _tilePreviewCount = "";
+    public string TilePreviewCount { get => _tilePreviewCount; private set => Set(ref _tilePreviewCount, value); }
+
+    private string _tilePreviewNote = "";
+    public string TilePreviewNote
+    {
+        get => _tilePreviewNote;
+        private set { if (Set(ref _tilePreviewNote, value)) Raise(nameof(HasTilePreviewNote)); }
+    }
+    public bool HasTilePreviewNote => TilePreviewNote.Length > 0;
+
+    private Rgb _tilePreviewBack;
+    public Rgb TilePreviewBack { get => _tilePreviewBack; private set => Set(ref _tilePreviewBack, value); }
+
+    private Rgb _tilePreviewFore;
+    public Rgb TilePreviewFore { get => _tilePreviewFore; private set => Set(ref _tilePreviewFore, value); }
+
+    private string _tilePreviewHint = "";
+    public string TilePreviewHint { get => _tilePreviewHint; private set => Set(ref _tilePreviewHint, value); }
+
+    /// <summary>The dashboard card exactly as Ready will show it — computed
+    /// against the REAL folder, so the count, the alert state, and the
+    /// subfolder note are live while you configure.</summary>
+    private void RecomputeTilePreview()
+    {
+        var w = SelectedWatch;
+        TilePreviewVisible = w is not null;
+        if (w is null) return;
+
+        var status = FolderMonitor.Status(w.ToWatchFolder(), ParseAlertTerms());
+        var p = _palette();
+        var baseBack = ThemePalette.ParseColor(w.Color) ?? p.TileDefaultBg;
+        TilePreviewBack = status.Alerting ? p.Danger : baseBack;
+        TilePreviewFore = status.Alerting ? p.DangerText : ThemePalette.IdealForeground(baseBack);
+        TilePreviewLabel = w.Label;
+        TilePreviewCount = status.Error.Length > 0
+            ? "⚠"
+            : $"{status.Count}" + (status.Alerting ? " ⚠" : "");
+        TilePreviewNote = status.AlertFolders.Count > 0
+            ? "in " + string.Join(", ", status.AlertFolders)
+            : "";
+        TilePreviewHint = status.Error.Length > 0
+            ? status.Error
+            : !status.HasFiles
+                ? "the tile only appears while the folder holds matching files"
+                : status.Alerting
+                    ? "alerting right now — this is the flash color"
+                    : "";
+    }
 
     private string _uiFontFamily = "";
     public string UiFontFamily { get => _uiFontFamily; set => Set(ref _uiFontFamily, value); }
@@ -524,6 +686,7 @@ public sealed class SettingsViewModel : ObservableObject
                 RemoveRouteCommand.RaiseCanExecuteChanged();
                 RouteUpCommand.RaiseCanExecuteChanged();
                 RouteDownCommand.RaiseCanExecuteChanged();
+                DuplicateRouteCommand.RaiseCanExecuteChanged();
             }
         }
     }
@@ -539,6 +702,7 @@ public sealed class SettingsViewModel : ObservableObject
                 RemoveWatchCommand.RaiseCanExecuteChanged();
                 WatchUpCommand.RaiseCanExecuteChanged();
                 WatchDownCommand.RaiseCanExecuteChanged();
+                RecomputeTilePreview();
             }
         }
     }
@@ -568,6 +732,11 @@ public sealed class SettingsViewModel : ObservableObject
 
     public RelayCommand AddRouteCommand { get; }
     public RelayCommand RemoveRouteCommand { get; }
+    public RelayCommand DuplicateRouteCommand { get; }
+    public RelayCommand CreateRouteFolderCommand { get; }
+    public RelayCommand OpenRouteFolderCommand { get; }
+    public RelayCommand CreateWatchFolderCommand { get; }
+    public RelayCommand OpenWatchFolderCommand { get; }
     public RelayCommand RouteUpCommand { get; }
     public RelayCommand RouteDownCommand { get; }
     public RelayCommand AddWatchCommand { get; }
@@ -725,9 +894,7 @@ public sealed class SettingsViewModel : ObservableObject
         cfg.UppercaseNames = UppercaseNames;
         cfg.WordSeparator = WordSeparator;
         cfg.FlashAlerts = FlashAlerts;
-        cfg.AlertTexts = AlertTextsText
-            .Split(new[] { '\r', '\n', ',' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .ToList();
+        cfg.AlertTexts = ParseAlertTerms();
         cfg.UiFontFamily = UiFontFamily;
         cfg.UiFontSize = UiFontSizeText.Trim().Length == 0 ? 0 : int.Parse(UiFontSizeText.Trim());
         cfg.Theme = ThemeMode;
