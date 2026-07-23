@@ -15,6 +15,7 @@
             <views:ColorStringToForeBrushConverter x:Key="ColorStringToForeBrush" />
             <views:SwatchCheckConverter x:Key="SwatchCheck" />
             <views:ZeroToVisibilityConverter x:Key="ZeroToVis" />
+            <views:FileNameConverter x:Key="FileName" />
             <views:FontFamilyStringConverter x:Key="FontFamilyString" />
             <views:FontSizeTextConverter x:Key="FontSizeText" />
             <FontFamily x:Key="AppFontFamily">Segoe UI</FontFamily>

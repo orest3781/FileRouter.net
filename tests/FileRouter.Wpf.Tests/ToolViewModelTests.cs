@@ -39,7 +39,10 @@ public class UnlockViewModelTests : IDisposable
         vm.AddFiles(new[] { path });
         vm.Password = "secret";
         await vm.UnlockAsync();
-        Assert.Contains("✓ locked.pdf — unlocked", vm.Results);
+        var line = Assert.Single(vm.ResultLines);
+        Assert.Equal(UnlockResultKind.Ok, line.Kind);
+        Assert.Contains("locked.pdf — unlocked", line.Text);
+        Assert.Equal("1 unlocked", vm.Summary);
     }
 
     [Fact]
@@ -51,8 +54,26 @@ public class UnlockViewModelTests : IDisposable
         vm.AddFiles(new[] { path });
         vm.Password = "wrong";
         await vm.UnlockAsync();
-        Assert.StartsWith("✗", vm.Results);
+        var line = Assert.Single(vm.ResultLines);
+        Assert.Equal(UnlockResultKind.Fail, line.Kind);
+        Assert.StartsWith("✗", line.Text);
         Assert.Equal(before, File.ReadAllBytes(path));
+        Assert.Contains("1 failed", vm.Summary);
+    }
+
+    [Fact]
+    public async Task AWrongPasswordIsNeverRemembered()
+    {
+        // the old behavior saved the label unconditionally after the attempt —
+        // a stored wrong password would just fail again silently next session
+        var vm = Vm();
+        vm.AddFiles(new[] { MakeEncrypted("locked.pdf") });
+        vm.Password = "wrong";
+        vm.RememberLabel = "Payer A";
+        await vm.UnlockAsync();
+        Assert.Empty(_cfg.SavedPasswords);
+        Assert.Equal(0, _saves);
+        Assert.Equal("Payer A", vm.RememberLabel);   // kept for the retry
     }
 
     [Fact]
@@ -96,21 +117,30 @@ public class UnlockViewModelTests : IDisposable
     }
 
     [Fact]
-    public async Task EmptyListJustHints()
+    public async Task EmptyListDisablesUnlockAndHints()
     {
         var vm = Vm();
+        Assert.False(vm.UnlockCommand.CanExecute(null));
         await vm.UnlockAsync();
-        Assert.Equal("Add at least one PDF first.", vm.Results);
+        Assert.Equal("Add at least one PDF first.", vm.Summary);
     }
 
     [Fact]
-    public void OnlyExistingPdfsAreAccepted()
+    public void OnlyExistingPdfsAreAcceptedAndTheDropExplainsItself()
     {
         var vm = Vm();
         var txt = Path.Combine(_dir, "not.txt");
         File.WriteAllText(txt, "x");
         vm.AddFiles(new[] { txt, Path.Combine(_dir, "ghost.pdf") });
         Assert.Empty(vm.Files);
+        Assert.Contains("nothing added", vm.AddNote);
+
+        var pdf = MakeEncrypted("real.pdf");
+        vm.AddFiles(new[] { pdf, txt });
+        Assert.Single(vm.Files);
+        Assert.Contains("1 added", vm.AddNote);
+        Assert.Contains("1 ignored", vm.AddNote);
+        Assert.True(vm.UnlockCommand.CanExecute(null));
     }
 }
 
