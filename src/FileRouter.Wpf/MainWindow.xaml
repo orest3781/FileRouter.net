@@ -39,8 +39,10 @@
                         </Style.Triggers>
                     </Style>
                 </Button.Style>
-                <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="13"
-                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <!-- E895 "Sync" reads as refresh far better at small sizes
+                     than E72C; Fluent Icons (Win11) with MDL2 fallback -->
+                <TextBlock Text="&#xE895;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                           FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Button>
 
             <Menu Padding="4,2">
