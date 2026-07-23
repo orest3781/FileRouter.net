@@ -251,9 +251,17 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                 StatusLine = $"{added} new file{(added == 1 ? "" : "s")} arrived — added to this session.";
             }
         }
-        else if (Screen != Screen.Processing)
+        else if (Screen == Screen.Ready)
         {
             ShowReady(scan);
+        }
+        else
+        {
+            // Done: notify, don't yank — the session summary stays put until
+            // the user goes back (the last commit's own file event lands here
+            // ~1.5s after the summary appears and must not clobber it)
+            if (scan.Count > 0)
+                StatusLine = $"{scan.Count} file{(scan.Count == 1 ? "" : "s")} waiting in the inbox.";
         }
     }
 
@@ -363,6 +371,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         CountLine = "Session complete";
         DetailLine = $"{_session.Filed} filed, {_session.Skipped} set aside"
             + (_session.Vanished > 0 ? $", {_session.Vanished} vanished" : "");
+        StatusLine = "";   // mid-session notes don't belong under the summary
         RaiseUndoState();
     }
 

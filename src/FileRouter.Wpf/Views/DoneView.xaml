@@ -6,7 +6,7 @@
                    Foreground="{DynamicResource Theme.Success}" />
         <TextBlock Text="{Binding DetailLine}" TextWrapping="Wrap" Margin="0,6,0,0" />
 
-        <Button Content="Rescan inbox" Command="{Binding RescanCommand}"
+        <Button Content="Back to inbox" Command="{Binding RescanCommand}"
                 Style="{StaticResource PrimaryButton}" Height="42" Margin="0,18,0,0" />
         <Button Content="Undo last   ·   Ctrl+Shift+Z" Command="{Binding UndoCommand}"
                 Height="36" Margin="0,8,0,0" />
