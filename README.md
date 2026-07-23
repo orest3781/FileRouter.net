@@ -51,6 +51,26 @@ tools/FileRouter.Smoke/        UI proofs against the real WebView2: the commit
                                constructs (dialogs / reentrancy / reset-demo)
 ```
 
+## Download
+
+Portable single-file builds are attached to every
+[release](../../releases) (and every CI run uploads one under the run's
+Artifacts):
+
+- **`FileRouter-vX-win-x64.exe`** (~5 MB) — needs the .NET 8 Desktop
+  Runtime, which modern Windows 10/11 machines already have (Windows
+  offers the download link if it's missing).
+- **`…-selfcontained.exe`** (~70 MB) — carries the runtime; nothing to
+  install.
+
+Both are truly portable: put the exe anywhere and run it — it reads (or
+creates on first run) a `config.json` beside itself, or takes
+`--config <path>`. Locally, `publish.bat` builds the same portable exe
+into `publish\`.
+
+To cut a release: `git tag v1.0.0 && git push origin v1.0.0` — the
+Release workflow tests, builds both exes, and publishes them.
+
 ## Build & test
 
 ```

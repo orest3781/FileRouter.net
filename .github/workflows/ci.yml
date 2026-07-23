@@ -18,6 +18,19 @@ jobs:
         run: dotnet build --no-restore -c Release
       - name: Test
         run: dotnet test --no-build -c Release --verbosity normal
+      # every push gets a downloadable portable exe (Actions run → Artifacts)
+      - name: Publish portable exe
+        run: >
+          dotnet publish src/FileRouter.Wpf -c Release -r win-x64
+          --self-contained false
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=none
+          -o out/portable
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FileRouter-portable-win-x64
+          path: out/portable/FileRouter.Wpf.exe
 
   smoke:
     # the UI proofs: real WebView2 releases the PDF handle before the move,
