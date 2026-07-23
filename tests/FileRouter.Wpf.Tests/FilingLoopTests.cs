@@ -50,6 +50,61 @@ public class FilingLoopTests
     }
 
     [Fact]
+    public async Task CommitShowsTheLastActionCardInTheRouteColor()
+    {
+        using var fx = Started("20240115--111111.pdf", "20240116--222222.pdf");
+        Assert.False(fx.Shell.LastActionVisible);
+
+        fx.Shell.TypedName = "SMITH JOHN";
+        await fx.Shell.OnRouteAsync(0);
+
+        Assert.True(fx.Shell.LastActionVisible);
+        Assert.Equal("✓  Filed to Filed", fx.Shell.LastActionText);
+        Assert.Equal("20240115-SMITH JOHN-111111.pdf", fx.Shell.LastActionDetail);
+        Assert.Equal(new FileRouter.Wpf.Theme.Rgb(46, 125, 50), fx.Shell.LastActionBack);   // #2e7d32
+        Assert.True(FileRouter.Wpf.Theme.ThemePalette.ContrastRatio(
+            fx.Shell.LastActionFore, fx.Shell.LastActionBack) >= 4.5);
+
+        fx.Shell.HideLastAction();   // what the 4s timer does
+        Assert.False(fx.Shell.LastActionVisible);
+    }
+
+    [Fact]
+    public async Task SetAsideShowsTheAmberCard()
+    {
+        using var fx = Started("20240115--111111.pdf");
+        await fx.Shell.OnSkipAsync();
+        Assert.True(fx.Shell.LastActionVisible);
+        Assert.Equal("✓  Set aside for later", fx.Shell.LastActionText);
+        Assert.Equal("20240115--111111.pdf", fx.Shell.LastActionDetail);
+        Assert.Equal(FileRouter.Wpf.Theme.ThemePalette.Light.Warning, fx.Shell.LastActionBack);
+    }
+
+    [Fact]
+    public async Task UndoRemovesTheCardSoItNeverLies()
+    {
+        using var fx = Started("20240115--111111.pdf", "20240116--222222.pdf");
+        fx.Shell.TypedName = "DOE JANE";
+        await fx.Shell.OnRouteAsync(0);
+        Assert.True(fx.Shell.LastActionVisible);
+
+        fx.Shell.OnUndo();
+        Assert.False(fx.Shell.LastActionVisible);
+    }
+
+    [Fact]
+    public async Task NewSessionStartsWithoutAStaleCard()
+    {
+        using var fx = Started("20240115--111111.pdf", "20240116--222222.pdf");
+        await fx.Shell.OnRouteAsync(0);
+        Assert.True(fx.Shell.LastActionVisible);
+
+        fx.Shell.StopSession();
+        fx.Shell.StartProcessing();
+        Assert.False(fx.Shell.LastActionVisible);
+    }
+
+    [Fact]
     public async Task BlankCommitKeepsTheOriginalName()
     {
         using var fx = Started("20240115--111111.pdf");

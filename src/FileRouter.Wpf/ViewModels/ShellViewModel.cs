@@ -41,6 +41,11 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             if (_uiContext is null) FlashTick();
             else _uiContext.Post(_ => FlashTick(), null);
         });
+        _lastActionTimer = new System.Threading.Timer(_ =>
+        {
+            if (_uiContext is null) HideLastAction();
+            else _uiContext.Post(_ => HideLastAction(), null);
+        });
 
         var dbPath = ResolvePath(cfg.HistoryDb, cfgPath);
         // Daily point-in-time backup, taken while the file is at rest — BEFORE
@@ -275,6 +280,43 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private string _statusLine = "";
     public string StatusLine { get => _statusLine; internal set => Set(ref _statusLine, value); }
 
+    // -------------------------------------------------- last-action card
+    // A transient confirmation after every commit/set-aside, colored like the
+    // route that was pressed — the at-a-glance "yes, it went where I meant".
+    internal const int LastActionMs = 4000;
+    private readonly System.Threading.Timer _lastActionTimer;
+
+    private bool _lastActionVisible;
+    public bool LastActionVisible { get => _lastActionVisible; private set => Set(ref _lastActionVisible, value); }
+
+    private string _lastActionText = "";
+    public string LastActionText { get => _lastActionText; private set => Set(ref _lastActionText, value); }
+
+    private string _lastActionDetail = "";
+    public string LastActionDetail { get => _lastActionDetail; private set => Set(ref _lastActionDetail, value); }
+
+    private Rgb _lastActionBack;
+    public Rgb LastActionBack { get => _lastActionBack; private set => Set(ref _lastActionBack, value); }
+
+    private Rgb _lastActionFore;
+    public Rgb LastActionFore { get => _lastActionFore; private set => Set(ref _lastActionFore, value); }
+
+    private void ShowLastAction(string text, string detail, Rgb back)
+    {
+        LastActionText = text;
+        LastActionDetail = detail;
+        LastActionBack = back;
+        LastActionFore = ThemePalette.IdealForeground(back);
+        LastActionVisible = true;
+        _lastActionTimer.Change(LastActionMs, Timeout.Infinite);
+    }
+
+    internal void HideLastAction()
+    {
+        LastActionVisible = false;
+        _lastActionTimer.Change(Timeout.Infinite, Timeout.Infinite);
+    }
+
     public ObservableCollection<RouteButtonViewModel> Routes { get; } = new();
 
     /// <summary>Raised whenever the route set is rebuilt so the window can
@@ -345,6 +387,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         _lastRoute = null;
         Screen = Screen.Processing;
         StatusLine = "";
+        HideLastAction();
         // hide the dashboard while filing
         DashboardVisible = false;
         StopFlash();
@@ -410,10 +453,19 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             await _viewer.ReleaseAsync();
             try
             {
-                var outcome = _session.CommitCurrent(typed, _cfg.Routes[index]);
+                var route = _cfg.Routes[index];
+                var outcome = _session.CommitCurrent(typed, route);
                 _lastRoute = index;
                 if (outcome.Vanished)
+                {
                     StatusLine = "That file disappeared from the inbox — logged and moved on.";
+                }
+                else
+                {
+                    var back = ThemePalette.ParseColor(route.Color) ?? _palette().Success;
+                    ShowLastAction($"✓  Filed to {route.Label}",
+                        Path.GetFileName(outcome.NewPath!), back);
+                }
             }
             catch (CommitError ex)
             {
@@ -440,6 +492,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                 var outcome = _session.SkipCurrent();
                 if (outcome.Vanished)
                     StatusLine = "That file disappeared from the inbox — logged and moved on.";
+                else
+                    ShowLastAction("✓  Set aside for later",
+                        Path.GetFileName(outcome.NewPath!), _palette().Warning);
             }
             catch (CommitError ex)
             {
@@ -462,6 +517,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             {
                 var (filed, original) = _session.UndoLast();
                 StatusLine = $"Undid {Path.GetFileName(filed)} → {Path.GetFileName(original)}";
+                HideLastAction();   // the card must never claim an undone filing
             }
             catch (CommitError ex)
             {
@@ -679,6 +735,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     {
         _watch.Activity -= OnFolderActivity;
         _flash.Dispose();
+        _lastActionTimer.Dispose();
         _history.Dispose();
     }
 }

@@ -77,5 +77,36 @@
 
         <TextBlock Text="{Binding StatusLine}" Style="{StaticResource StatusText}"
                    Margin="0,12,0,0" />
+
+        <!-- what just happened: a transient card in the pressed route's color
+             (green when the route has none; amber for set-aside). Sits at the
+             bottom so the buttons above never shift mid-click. -->
+        <Border CornerRadius="4" Padding="12,9" Margin="0,12,0,0"
+                Background="{Binding LastActionBack, Converter={StaticResource RgbToBrush}}"
+                Visibility="{Binding LastActionVisible, Converter={StaticResource BoolToVis}}">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Style.Triggers>
+                        <Trigger Property="Visibility" Value="Visible">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                         From="0" To="1" Duration="0:0:0.15" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <StackPanel>
+                <TextBlock Text="{Binding LastActionText}" FontWeight="SemiBold"
+                           Foreground="{Binding LastActionFore, Converter={StaticResource RgbToBrush}}" />
+                <TextBlock Text="{Binding LastActionDetail}" FontSize="11" Margin="0,2,0,0"
+                           TextWrapping="Wrap"
+                           Foreground="{Binding LastActionFore, Converter={StaticResource RgbToBrush}}" />
+            </StackPanel>
+        </Border>
     </StackPanel>
 </UserControl>
