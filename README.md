@@ -1,88 +1,88 @@
 # FileRouter.NET
 
-A small, network-friendly rewrite of FileRouter for Windows — a desktop tool
-for naming and sorting scanned PDFs / faxes fast. C# / .NET 8 + WinForms, with
-the PDF viewer hosted in **WebView2** (Edge's engine, already on the machine),
-so **no PDF rendering library is bundled**.
+A fast Windows desktop tool for naming and sorting scanned PDFs / faxes.
+Type a name, press a route button — the file moves. No PDF renderer bundled;
+the built-in Edge (WebView2) engine, already on your machine, displays every PDF.
 
-Why the rewrite: the Python/PySide6 original carries ~650 MB of dependencies
-(PySide6 alone) and is awkward to run over a network share. This version's own
-code is **~400 KB**; the .NET Desktop and WebView2 runtimes are already present
-on modern Windows, so deployment is a few MB.
+## ⬇️ Download
 
-## Design goals
+**[Download the latest release (.exe)](../../releases/latest)**
 
-- **Small.** No bundled Qt, no bundled PDF renderer — WebView2 renders PDFs
-  natively.
-- **Network-safe.** The audit database uses a rollback journal (never WAL,
-  which corrupts over SMB) with a `busy_timeout`, so several workstations can
-  file into one `history.sqlite` on a share without lock errors or corruption.
-- **Never loses a file.** Files are only ever *moved*, never deleted or
-  overwritten; a taken name gets a Windows-style ` (2)` counter. Illegal
-  filename characters (a colon, `< > : " / \ | ? *`) are rejected up front —
-  the original app could silently hide a document in an NTFS stream.
+Single-file, self-contained Windows executable — no installer, no .NET runtime needed.
 
-## Structure
+## Requirements
 
-```
-src/FileRouter.Core/     pure logic — no UI, no Windows dependency, unit-tested
-  Naming.cs              filename construction + reserved-char guard
-  BulkRename.cs          batch rename + the review-file name parser
-  MatchMerge.cs          roster CSV matching + Control-ID merge
-  Config.cs  Scanner.cs  Commit.cs  Session.cs
-  History.cs             network-safe SQLite audit log
-src/FileRouter.App/      WinForms shell + WebView2 PDF viewer (the filing loop:
-                         Ready → Processing → Done, live inbox monitoring,
-                         set-aside alert, live "will be filed as" preview)
-tests/FileRouter.Core.Tests/   xUnit — 145 tests
-tools/FileRouter.Smoke/        headless UI smoke: drives the real form and
-                               proves Edge releases the PDF handle so the move
-                               succeeds (commit / set-aside / undo / history)
-```
+- Windows 10 or 11
+- Microsoft Edge (WebView2) — already present on any up-to-date Windows machine
 
-## Build & test
+## Getting started
 
-```
-dotnet build
-dotnet test
-```
+1. Download `FileRouter.App.exe` from the [Releases](../../releases/latest) page.
+2. Place it anywhere (a network share works fine).
+3. Run it. On first launch it creates `config.json` next to the exe with default values.
+4. Open **File → Settings…** to set your inbox folder, set-aside folder, and filing routes — no JSON editing required.
 
-## Run the demo
+## Features
 
-Generate a demo inbox (5 PDFs + 2 routes) and launch against it:
+### Filing loop
+- Opens PDFs one at a time from the inbox folder in a built-in viewer.
+- Type a name (with autocomplete from history, ranked by recency and frequency, seeded from `names.txt`), then click a route button to move the file — or use keyboard shortcuts.
+- Live **"will be filed as"** preview updates as you type.
+- Reentrancy-safe: a fast double-press can never mislabel a document.
 
-```
-dotnet run --project src/FileRouter.App -- --config demo\config.json
-```
+### Keyboard shortcuts
+| Key | Action |
+|---|---|
+| `Ctrl+1`, `Ctrl+2`, … | File to route 1, 2, … |
+| `Enter` | File to the last-used route |
+| `Ctrl+K` | Set the current file aside |
+| `Ctrl+Shift+Z` | Undo the last filing |
 
-Type a name, press a route button (or `Ctrl+1`/`Ctrl+2`, or `Enter` for the
-last-used route). `Ctrl+K` sets a file aside; `Ctrl+Shift+Z` undoes.
+### Ready dashboard
+- Monitored-folder tiles appear while a watched folder holds matching files, showing a live count and color.
+- Filename **alert terms** flash a tile (and the inbox count) red until the matching file is cleared.
+- Configure watched folders and alert terms in **File → Settings…**.
 
-## Status
+### Audit history
+- Every file move is logged to `history.sqlite` (network-safe: rollback journal, never WAL).
+- Multiple workstations can file into one shared database without lock errors.
+- **Daily point-in-time backup** is taken automatically.
+- **File → Export history…** saves a CSV of all activity.
 
-Feature-complete for the core workflow; 159 unit tests + a UI smoke, all green.
+### Tools menu
+- **Unlock PDFs** — decrypt password-protected PDFs in place or to a copy.
+- **Bulk rename** — batch-rename a folder of files with a hand-editable preview; includes a "Review files" name transform.
+- **Match & merge** — match a folder of PDFs against a roster CSV by name or Control ID, with an in-app triage viewer for ambiguous matches.
 
-**Done:**
-- Filing loop — Naming, Scanner, Commit, Session — with the Ready →
-  Processing → Done lifecycle, live inbox monitoring, set-aside alert, a live
-  filename preview, and **name autocomplete** (history ranked by recency then
-  frequency, seeded from `names.txt`). Verified end-to-end against the real
-  WebView2 viewer. Commit/skip/undo are guarded against reentrancy so a fast
-  double-press can never mislabel a document (regression-tested).
-- Network-safe audit DB (History): rollback journal + busy_timeout, never WAL,
-  with a **daily point-in-time backup** and **CSV export** (File menu).
-- PDF metadata tagging (PdfSharp), wired into commit/undo.
-- **Tools menu** — Unlock PDFs (decrypt in place or to a copy), Bulk rename
-  (incl. the "Review files" transform + hand-editable preview), and Match &
-  merge (roster CSV matching + Control-ID merge, with an in-app triage viewer
-  that opens each ambiguous PDF in Edge beside the candidate roster rows).
-- **Ready dashboard** — monitored-folder tiles (`watch_folders`) that appear
-  only while a folder holds matching files, colored, clickable, with a live
-  count; filename **alerts** (`alert_texts`) flash a tile (and the inbox count)
-  red until the file clears.
-- **Settings dialog** (File → Settings…) — edits every field, the routes
-  table, and the monitored-folders table, so first-time setup no longer means
-  hand-editing `config.json`.
+### Settings dialog
+**File → Settings…** lets you configure every option without touching JSON:
+- Inbox and set-aside folders
+- Filing routes (label, destination path, hotkey, suffix, naming mode, color)
+- Naming mode (`insert` or `replace`) and sort order
+- Monitored folders (dashboard tiles) and alert terms
+- Options: write route label into PDF metadata, `Enter` commits to last route, uppercase names, flash alerts
 
-The .NET app is now at feature parity with the Python original for the core
-workflow.
+## Configuration reference (`config.json`)
+
+The file is created automatically on first run and is fully editable via **File → Settings…**.
+
+| Key | Default | Description |
+|---|---|---|
+| `inbox` | *(empty)* | Folder to scan for incoming files |
+| `deferred` | *(empty)* | Set-aside folder |
+| `names_file` | `names.txt` | Seed file for name autocomplete (one name per line) |
+| `history_db` | `history.sqlite` | Audit log path (absolute or relative to config) |
+| `naming_mode` | `insert` | `insert` — name precedes suffix · `replace` — name only |
+| `sort` | `size_desc` | Order files are presented (`filename_asc/desc`, `mtime_asc/desc`, `size_asc/desc`) |
+| `enter_commits` | `true` | `Enter` files to the last-used route |
+| `uppercase_names` | `true` | Auto-capitalise typed names |
+| `tag_with_route` | `true` | Write the route label into the PDF keywords/subject field |
+| `flash_alerts` | `true` | Flash alert tiles; `false` for a steady highlight |
+| `routes` | `[]` | Array of filing destinations (see below) |
+| `watch_folders` | `[]` | Array of monitored-folder dashboard tiles |
+| `alert_texts` | `[]` | Filename substrings that trigger red alert highlighting |
+| `monitor_title` | `"Monitored folders"` | Heading shown above the dashboard tiles |
+
+**Route fields:** `label`, `path`, `hotkey` (e.g. `"1"`), `suffix`, `append_suffix`, `naming_mode` (overrides global), `color`
+
+**Watch-folder fields:** `label`, `path`, `filetypes` (e.g. `"pdf"` or `"pdf,txt"`; blank = any), `recursive`, `color`
