@@ -70,6 +70,26 @@ public partial class MainWindow : Window
                     "FileRouter");
             Shell.Initialize();
         };
+        // X while filing (or on the summary) returns to the dashboard instead
+        // of exiting — the queue stays in the inbox, nothing is lost. The app
+        // really closes from the dashboard, File > Exit, or OS shutdown.
+        Closing += (_, e) =>
+        {
+            if (_reallyExit) return;
+            if (Shell.IsProcessing)
+            {
+                e.Cancel = true;
+                Shell.StopSession();   // respects the mid-commit busy guard
+            }
+            else if (Shell.IsDone)
+            {
+                e.Cancel = true;
+                Shell.RescanCommand.Execute(null);
+            }
+        };
+        if (Application.Current is { } app)
+            app.SessionEnding += (_, _) => _reallyExit = true;
+
         Closed += (_, _) =>
         {
             ViewerInputEnhancer.Unregister(_panZone);
@@ -78,7 +98,13 @@ public partial class MainWindow : Window
         };
     }
 
-    private void OnExit(object sender, RoutedEventArgs e) => Close();
+    private bool _reallyExit;
+
+    private void OnExit(object sender, RoutedEventArgs e)
+    {
+        _reallyExit = true;
+        Close();
+    }
 
     /// <summary>Where left-drag pans and Shift+scroll zooms: the viewer's
     /// document area while a session is running, in device pixels.</summary>
