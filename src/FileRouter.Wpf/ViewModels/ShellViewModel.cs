@@ -292,15 +292,28 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private int? _lastRoute;
     private bool _busy;   // cross-command reentrancy guard (commit/skip/undo)
 
+    /// <summary>The same polishing the name box applies to typing — used on
+    /// completer names too, so suggestions match and complete in their FINAL
+    /// form (with the word separator, uppercased).</summary>
+    private string Polish(string s)
+    {
+        if (_cfg.UppercaseNames) s = s.ToUpperInvariant();
+        if (_cfg.WordSeparator.Length > 0) s = s.Replace(" ", _cfg.WordSeparator);
+        return s;
+    }
+
+    /// <summary>What separates "words" in the name box: the configured word
+    /// separator when set, else a space.</summary>
+    private string WordBoundary =>
+        _cfg.WordSeparator.Length > 0 ? _cfg.WordSeparator : " ";
+
     private string _typedName = "";
     public string TypedName
     {
         get => _typedName;
         set
         {
-            var polished = _cfg.UppercaseNames ? value.ToUpperInvariant() : value;
-            if (_cfg.WordSeparator.Length > 0)
-                polished = polished.Replace(" ", _cfg.WordSeparator);
+            var polished = Polish(value);
             if (Set(ref _typedName, polished))
             {
                 UpdatePreview();
@@ -585,7 +598,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     {
         var seeds = Completer.LoadSeedNames(
             string.IsNullOrWhiteSpace(_cfg.NamesFile) ? null : ResolvePath(_cfg.NamesFile, _cfgPath));
-        _allNames = Completer.Names(_history, seeds);
+        // polished once here: a seed list with spaces still suggests and
+        // completes correctly when a word separator is configured
+        _allNames = Completer.Names(_history, seeds)
+            .Select(Polish).Distinct().ToList();
         RefreshSuggestions();
     }
 
@@ -615,26 +631,34 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         HasSuggestions = false;
     }
 
-    /// <summary>Tab: complete the top suggestion one word at a time
-    /// (Python-parity muscle memory; Enter stays free to commit).</summary>
+    /// <summary>Tab: complete the top suggestion one word at a time, honoring
+    /// the configured word separator as the boundary (Python-parity muscle
+    /// memory; Enter stays free to commit).</summary>
     internal bool CompleteNextWord()
     {
         if (Suggestions.Count == 0) return false;
         var full = Suggestions[0];
+        var sep = WordBoundary;
         var len = TypedName.Length;
         if (len >= full.Length) return false;
         var start = len;
-        if (full[start] == ' ') start++;
-        var idx = full.IndexOf(' ', Math.Min(start, full.Length - 1));
+        if (start + sep.Length <= full.Length
+            && string.CompareOrdinal(full, start, sep, 0, sep.Length) == 0)
+            start += sep.Length;
+        var idx = start < full.Length
+            ? full.IndexOf(sep, start, StringComparison.Ordinal)
+            : -1;
         TypedName = idx < 0 ? full : full[..idx];
         return true;
     }
 
-    /// <summary>Shift+Tab: drop the last completed word.</summary>
+    /// <summary>Shift+Tab: drop the last completed word (same boundary).</summary>
     internal void DropLastWord()
     {
-        var t = TypedName.TrimEnd();
-        var i = t.LastIndexOf(' ');
+        var sep = WordBoundary;
+        var t = TypedName;
+        if (t.EndsWith(sep, StringComparison.Ordinal)) t = t[..^sep.Length];
+        var i = t.LastIndexOf(sep, StringComparison.Ordinal);
         TypedName = i < 0 ? "" : t[..i];
     }
 

@@ -254,6 +254,37 @@ public class FilingLoopTests
     }
 
     [Fact]
+    public void TabCompletesWordAtATimeWithAWordSeparatorToo()
+    {
+        // with word_separator "-", history names look like SMITH-JOHN and a
+        // space-splitting completer would swallow the whole name in one Tab
+        var fx = new ShellFixture(cfg => cfg.WordSeparator = "-");
+        using var _ = fx;
+        fx.WriteNamesFile("SMITH JOHN MICHAEL");   // seeds may still use spaces
+        fx.AddInboxFile("20240115--111111.pdf");
+        fx.Shell.Initialize();
+        fx.Shell.StartProcessing();
+
+        fx.Shell.TypedName = "SM";
+        Assert.Contains("SMITH-JOHN-MICHAEL", fx.Shell.Suggestions);   // polished
+
+        Assert.True(fx.Shell.CompleteNextWord());
+        Assert.Equal("SMITH", fx.Shell.TypedName);
+        Assert.True(fx.Shell.CompleteNextWord());
+        Assert.Equal("SMITH-JOHN", fx.Shell.TypedName);
+        Assert.True(fx.Shell.CompleteNextWord());
+        Assert.Equal("SMITH-JOHN-MICHAEL", fx.Shell.TypedName);
+        Assert.False(fx.Shell.CompleteNextWord());   // nothing left to add
+
+        fx.Shell.DropLastWord();
+        Assert.Equal("SMITH-JOHN", fx.Shell.TypedName);
+        fx.Shell.DropLastWord();
+        Assert.Equal("SMITH", fx.Shell.TypedName);
+        fx.Shell.DropLastWord();
+        Assert.Equal("", fx.Shell.TypedName);
+    }
+
+    [Fact]
     public async Task CommittedNamesBecomeSuggestions()
     {
         using var fx = Started("20240115--111111.pdf", "20240116--222222.pdf");
