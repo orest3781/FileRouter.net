@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/banner.png" alt="FileRouter — fast desktop file routing for Windows" width="840">
+</p>
+
 # FileRouter
 
 A fast Windows desktop tool for **file routing**: name incoming documents and
