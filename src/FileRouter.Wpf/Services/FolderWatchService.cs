@@ -2,7 +2,7 @@ namespace FileRouter.Wpf.Services;
 
 /// <summary>Live folder monitoring with the exact semantics the WinForms app
 /// proved out: any Created/Deleted/Renamed restarts a 1.5 s debounce (lets a
-/// fax finish downloading before we rescan), and a 30 s poll backstops network
+/// file finish downloading before we rescan), and a 30 s poll backstops network
 /// shares where FileSystemWatcher change notifications never fire (SMB).
 ///
 /// <see cref="Activity"/> is raised on the provided SynchronizationContext

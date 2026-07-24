@@ -15,7 +15,7 @@ namespace FileRouter.Core;
 ///
 /// Decryption uses PdfSharp Import mode (open with the user password, copy the
 /// pages into a fresh unencrypted document) — Modify mode would demand the
-/// OWNER password, which the person filing a fax doesn't have.
+/// OWNER password, which the person filing a document doesn't have.
 /// </summary>
 public static class Unlock
 {

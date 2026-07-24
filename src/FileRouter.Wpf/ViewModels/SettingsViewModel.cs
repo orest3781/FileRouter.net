@@ -618,7 +618,7 @@ public sealed class SettingsViewModel : ObservableObject
     }
 
     /// <summary>One live example tying mode + UPPERCASE + separator together —
-    /// exactly what a fax from Smith John would file as with these settings.</summary>
+    /// exactly what a document for Smith John would file as with these settings.</summary>
     public string FilingExample
     {
         get
@@ -633,7 +633,7 @@ public sealed class SettingsViewModel : ObservableObject
                     "20240115--12345.pdf", name,
                     routeMode: null, globalMode: InsertMode ? "insert" : "replace",
                     routeSuffix: "", appendSuffix: false, exists: _ => false);
-                return $"A fax typed as \"Smith John\" files as:  {result.Filename}";
+                return $"A file typed as \"Smith John\" files as:  {result.Filename}";
             }
             catch (ArgumentException ex)
             {

@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-/// <summary>Regenerate the demo: 5 sample faxes in demo\inbox, empty route and
+/// <summary>Regenerate the demo: 5 sample documents in demo\inbox, empty route and
 /// set-aside folders, and a ready-to-use demo\config.json. Self-contained (no
 /// Python) — used by reset.bat. The demo folder is resolved relative to the
 /// current directory (reset.bat cd's to the project root first).</summary>
@@ -24,8 +24,8 @@ public static class DemoReset
 
         // seed the monitored folder so a dashboard tile shows (one file trips
         // the "URGENT" alert -> the tile flashes)
-        MinimalPdf.Write(Path.Combine(failed, "retry_00842.pdf"), "FAILED FAX 00842");
-        MinimalPdf.Write(Path.Combine(failed, "URGENT_00843.pdf"), "URGENT FAILED FAX 00843");
+        MinimalPdf.Write(Path.Combine(failed, "retry_00842.pdf"), "FAILED TRANSFER 00842");
+        MinimalPdf.Write(Path.Combine(failed, "URGENT_00843.pdf"), "URGENT FAILED TRANSFER 00843");
 
         var names = new[] { "SMITH JOHN", "GARCIA MARIA", "O'BRIEN PATRICK", "MULLER HANS", "TANAKA YUKI" };
         for (var i = 0; i < names.Length; i++)
@@ -47,7 +47,7 @@ public static class DemoReset
             alert_texts = new[] { "URGENT" },
             watch_folders = new[]
             {
-                new { label = "Failed faxes", path = failed.Replace('\\', '/'), recursive = false, filetypes = "pdf", color = "#c0392b" },
+                new { label = "Failed transfers", path = failed.Replace('\\', '/'), recursive = false, filetypes = "pdf", color = "#c0392b" },
             },
             routes = new[]
             {
@@ -56,7 +56,7 @@ public static class DemoReset
             },
         }, new JsonSerializerOptions { WriteIndented = true }));
 
-        Console.WriteLine($"Demo reset: {names.Length} sample faxes in {inbox}");
+        Console.WriteLine($"Demo reset: {names.Length} sample documents in {inbox}");
         Console.WriteLine("Run  run.bat  to launch against it.");
         return 0;
     }

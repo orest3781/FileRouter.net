@@ -694,7 +694,7 @@
                                        FontFamily="{Binding UiFontFamily, Converter={StaticResource FontFamilyString}}"
                                        FontSize="{Binding UiFontSizeText, Converter={StaticResource FontSizeText}}"
                                        TextWrapping="Wrap" />
-                            <TextBlock Text="The quick brown fax jumps over 0123456789."
+                            <TextBlock Text="The quick brown fox jumps over 0123456789."
                                        FontFamily="{Binding UiFontFamily, Converter={StaticResource FontFamilyString}}"
                                        FontSize="{Binding UiFontSizeText, Converter={StaticResource FontSizeText}}"
                                        Style="{StaticResource SubtleText}" Margin="0,4,0,0"

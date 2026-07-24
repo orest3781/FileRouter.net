@@ -59,11 +59,17 @@ jobs:
           -p:Version=${{ steps.ver.outputs.version }}
           -o out/selfcontained
 
-      - name: Name the assets
+      # zips download cleaner than bare exes (browsers and SmartScreen are
+      # kinder to archives), and they carry a proper inner filename
+      - name: Zip the assets
         shell: pwsh
         run: |
-          Copy-Item out/portable/FileRouter.Wpf.exe "FileRouter-${{ steps.ver.outputs.tag }}-win-x64.exe"
-          Copy-Item out/selfcontained/FileRouter.Wpf.exe "FileRouter-${{ steps.ver.outputs.tag }}-win-x64-selfcontained.exe"
+          Copy-Item out/portable/FileRouter.Wpf.exe FileRouter.exe
+          Compress-Archive -Path FileRouter.exe -DestinationPath "FileRouter-${{ steps.ver.outputs.tag }}-win-x64.zip"
+          Remove-Item FileRouter.exe
+          Copy-Item out/selfcontained/FileRouter.Wpf.exe FileRouter.exe
+          Compress-Archive -Path FileRouter.exe -DestinationPath "FileRouter-${{ steps.ver.outputs.tag }}-win-x64-selfcontained.zip"
+          Remove-Item FileRouter.exe
 
       - name: Create the GitHub release
         if: startsWith(github.ref, 'refs/tags/')
@@ -72,8 +78,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: >
           gh release create "${{ steps.ver.outputs.tag }}"
-          "FileRouter-${{ steps.ver.outputs.tag }}-win-x64.exe"
-          "FileRouter-${{ steps.ver.outputs.tag }}-win-x64-selfcontained.exe"
+          "FileRouter-${{ steps.ver.outputs.tag }}-win-x64.zip"
+          "FileRouter-${{ steps.ver.outputs.tag }}-win-x64-selfcontained.zip"
           --title "FileRouter ${{ steps.ver.outputs.tag }}"
           --generate-notes
 
@@ -82,4 +88,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: FileRouter-win-x64
-          path: FileRouter-*.exe
+          path: FileRouter-*.zip

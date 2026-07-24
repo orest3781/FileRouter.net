@@ -20,7 +20,7 @@ public static partial class Naming
 
     // Inbox contract: any PDF with "--" in the stem (something on each side).
     // Insert mode splices the typed name at the FIRST "--"; the classic
-    // YYYYMMDD--ID fax names are just one instance of the pattern.
+    // YYYYMMDD--ID names are just one instance of the pattern.
     [GeneratedRegex(@"^.+--.+\.pdf$", RegexOptions.IgnoreCase)]
     public static partial Regex InboxRegex();
 
