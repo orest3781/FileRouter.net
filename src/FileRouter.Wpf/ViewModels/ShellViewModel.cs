@@ -93,7 +93,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                 Raise(nameof(IsReady));
                 Raise(nameof(IsProcessing));
                 Raise(nameof(IsDone));
-                Raise(nameof(ShowEmptyToggleVisible));
+                Raise(nameof(TileControlsVisible));
             }
         }
     }
@@ -174,16 +174,19 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             do
             {
                 _refreshPending = false;
-                // while filing, skip the watch-folder sweep — the dashboard is
-                // hidden and 8 network enumerations per debounce is pure churn
-                var wantStatuses = Screen != Screen.Processing;
+                // while filing the dashboard is hidden, and in Hidden mode the
+                // user asked for silence — either way skip the watch-folder
+                // sweep (one network enumeration per watched folder, per
+                // debounce, is pure churn on SMB)
+                var mode = TileMode;
+                var wantStatuses = Screen != Screen.Processing && mode != "hidden";
                 var cfg = _cfg;
                 var snap = await _scheduler.Run(() => new FolderSnapshot(
                     Scanner.Scan(cfg.Inbox, cfg.Sort),
                     Scanner.CountFiles(cfg.Deferred),
                     wantStatuses
                         ? FolderMonitor.All(cfg.WatchFolders, cfg.AlertTexts)
-                            .Where(s => cfg.ShowEmptyTiles || s.HasFiles || s.Error.Length > 0)
+                            .Where(s => mode == "all" || s.HasFiles || s.Error.Length > 0)
                             .ToList()
                         : null));
                 ApplySnapshot(snap, showErrors);
@@ -262,24 +265,35 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private bool _dashboardVisible;
     public bool DashboardVisible { get => _dashboardVisible; private set => Set(ref _dashboardVisible, value); }
 
-    /// <summary>Header-bar toggle: keep every monitored folder's tile visible
-    /// even at zero files. Persisted, and refreshes the dashboard live.</summary>
-    public bool ShowEmptyTiles
+    /// <summary>The config's tile_visibility normalized: unknown values (hand
+    /// edits, future keys) read as the default so the dashboard never
+    /// silently disappears on a typo.</summary>
+    private string TileMode => _cfg.TileVisibility switch
     {
-        get => _cfg.ShowEmptyTiles;
+        "all" or "hidden" => _cfg.TileVisibility,
+        _ => "active",
+    };
+
+    /// <summary>Header-bar dropdown: 0 = Active only, 1 = All (even empty),
+    /// 2 = Hidden. Persisted, and refreshes the dashboard live; Hidden also
+    /// skips the watch-folder sweep entirely — a real saving on SMB.</summary>
+    public int TileVisibilityIndex
+    {
+        get => TileMode switch { "all" => 1, "hidden" => 2, _ => 0 };
         set
         {
-            if (_cfg.ShowEmptyTiles == value) return;
-            _cfg.ShowEmptyTiles = value;
+            var mode = value switch { 1 => "all", 2 => "hidden", _ => "active" };
+            if (TileMode == mode) return;
+            _cfg.TileVisibility = mode;
             Raise();
             SaveConfigNow();
             _ = RefreshFoldersAsync();
         }
     }
 
-    /// <summary>The toggle only appears on Ready, and only when there are
-    /// monitored folders to show.</summary>
-    public bool ShowEmptyToggleVisible => IsReady && _cfg.WatchFolders.Count > 0;
+    /// <summary>The dropdown only appears on Ready, and only when there are
+    /// monitored folders to control.</summary>
+    public bool TileControlsVisible => IsReady && _cfg.WatchFolders.Count > 0;
 
     private bool _inboxAlerting;
     public bool InboxAlerting { get => _inboxAlerting; private set => Set(ref _inboxAlerting, value); }
@@ -684,8 +698,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         _session = new Session(cfg, _history);
         await _scheduler.Run(() => _watch.SetFolders(cfg.Inbox, cfg.Deferred));
         Raise(nameof(UppercaseNames));
-        Raise(nameof(ShowEmptyTiles));
-        Raise(nameof(ShowEmptyToggleVisible));
+        Raise(nameof(TileVisibilityIndex));
+        Raise(nameof(TileControlsVisible));
         SettingsApplied?.Invoke();
         Rescan();
     }

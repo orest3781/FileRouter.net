@@ -69,9 +69,11 @@ public sealed class Config
     [JsonPropertyName("monitor_title")] public string MonitorTitle { get; set; } = "Monitored folders";
     [JsonPropertyName("flash_alerts")] public bool FlashAlerts { get; set; } = true;
 
-    /// <summary>Keep every monitored folder's tile on the dashboard even at
-    /// zero files (default: tiles appear only while a folder holds files).</summary>
-    [JsonPropertyName("show_empty_tiles")] public bool ShowEmptyTiles { get; set; }
+    /// <summary>Monitored-folder tile visibility: "active" (tiles appear only
+    /// while a folder holds files — the default), "all" (every tile stays,
+    /// even at zero), or "hidden" (no tiles, and the folder sweep is skipped
+    /// entirely). Unknown values read as "active".</summary>
+    [JsonPropertyName("tile_visibility")] public string TileVisibility { get; set; } = "active";
 
     // Appearance (Python parity: same key names, so an old config round-trips)
     [JsonPropertyName("ui_font_family")] public string UiFontFamily { get; set; } = "";

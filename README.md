@@ -65,9 +65,11 @@ workflow tests, builds, zips, and publishes.
   overrides, filename suffixes, and real config-driven hotkeys.
 - **Dashboard** — a compact window parked in the corner of your screen that
   sizes itself to its content: a big inbox count, plus a grid of monitored
-  folder tiles that appear only while a folder holds matching files. Filename
-  alert terms flash a tile (and the count) red, and alerts found in
-  subfolders say which one.
+  folder tiles. A header dropdown picks their visibility: *Active only*
+  (tiles appear while a folder holds matching files), *All* (every tile
+  stays, even at zero), or *Hidden* (no tiles — and the folder sweep is
+  skipped entirely). Filename alert terms flash a tile (and the count) red,
+  and alerts found in subfolders say which one.
 - **Viewer gestures** — Shift+scroll zooms at the cursor, left-drag pans.
 - **History** — a network-safe SQLite audit log with daily point-in-time
   backups, an in-app viewer (filter, lazy load), and CSV export with a

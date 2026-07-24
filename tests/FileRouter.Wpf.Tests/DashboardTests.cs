@@ -155,9 +155,9 @@ public class DashboardTests
     }
 
     [Fact]
-    public void ShowEmptyTilesKeepsAnEmptyFolderOnTheDashboard()
+    public void AllModeKeepsAnEmptyFolderOnTheDashboard()
     {
-        using var fx = WithWatchFolder(out _, cfg => cfg.ShowEmptyTiles = true);
+        using var fx = WithWatchFolder(out _, cfg => cfg.TileVisibility = "all");
         fx.Shell.Initialize();
 
         var tile = Assert.Single(fx.Shell.Tiles);
@@ -168,36 +168,67 @@ public class DashboardTests
     }
 
     [Fact]
-    public void TogglingShowEmptyRefreshesLiveAndPersists()
+    public void HiddenModeRemovesTilesEvenWithAlertingFiles()
     {
-        using var fx = WithWatchFolder(out _);
+        using var fx = WithWatchFolder(out var watched,
+            cfg => cfg.TileVisibility = "hidden");
+        File.WriteAllText(Path.Combine(watched, "URGENT.pdf"), "x");
         fx.Shell.Initialize();
-        Assert.Empty(fx.Shell.Tiles);
-        Assert.True(fx.Shell.ShowEmptyToggleVisible);   // Ready + folders configured
 
-        fx.Shell.ShowEmptyTiles = true;
-        Assert.Single(fx.Shell.Tiles);
-        Assert.True(fx.Shell.DashboardVisible);
-        Assert.True(Config.Load(fx.CfgPath).ShowEmptyTiles);   // survived the save
-
-        fx.Shell.ShowEmptyTiles = false;
         Assert.Empty(fx.Shell.Tiles);
         Assert.False(fx.Shell.DashboardVisible);
-        Assert.False(Config.Load(fx.CfgPath).ShowEmptyTiles);
+        Assert.False(fx.Shell.FlashRunning);   // silenced folders don't flash
     }
 
     [Fact]
-    public void ToggleHidesWithoutWatchFoldersAndWhileFiling()
+    public void ChangingTileVisibilityRefreshesLiveAndPersists()
+    {
+        using var fx = WithWatchFolder(out var watched);
+        File.WriteAllText(Path.Combine(watched, "a.pdf"), "x");
+        fx.Shell.Initialize();
+        Assert.Single(fx.Shell.Tiles);           // active + file present
+        Assert.True(fx.Shell.TileControlsVisible);
+
+        fx.Shell.TileVisibilityIndex = 2;        // Hidden
+        Assert.Empty(fx.Shell.Tiles);
+        Assert.False(fx.Shell.DashboardVisible);
+        Assert.Equal("hidden", Config.Load(fx.CfgPath).TileVisibility);
+
+        fx.Shell.TileVisibilityIndex = 1;        // All
+        Assert.Single(fx.Shell.Tiles);
+        Assert.Equal("all", Config.Load(fx.CfgPath).TileVisibility);
+
+        fx.Shell.TileVisibilityIndex = 0;        // back to Active only
+        Assert.Single(fx.Shell.Tiles);           // still has a file
+        Assert.Equal("active", Config.Load(fx.CfgPath).TileVisibility);
+    }
+
+    [Fact]
+    public void UnknownTileVisibilityReadsAsActive()
+    {
+        using var fx = WithWatchFolder(out var watched,
+            cfg => cfg.TileVisibility = "banana");
+        fx.Shell.Initialize();
+        Assert.Empty(fx.Shell.Tiles);            // not "all" — empty stays hidden
+        Assert.Equal(0, fx.Shell.TileVisibilityIndex);
+
+        File.WriteAllText(Path.Combine(watched, "a.pdf"), "x");
+        fx.Shell.OnFolderActivity();
+        Assert.Single(fx.Shell.Tiles);           // not "hidden" — files show
+    }
+
+    [Fact]
+    public void TileControlsHideWithoutWatchFoldersAndWhileFiling()
     {
         using var bare = new ShellFixture();
         bare.Shell.Initialize();
-        Assert.False(bare.Shell.ShowEmptyToggleVisible);   // nothing to show
+        Assert.False(bare.Shell.TileControlsVisible);   // nothing to control
 
         using var fx = WithWatchFolder(out _);
         fx.AddInboxFile();
         fx.Shell.Initialize();
         fx.Shell.StartProcessing();
-        Assert.False(fx.Shell.ShowEmptyToggleVisible);     // hidden while filing
+        Assert.False(fx.Shell.TileControlsVisible);     // hidden while filing
     }
 
     [Fact]

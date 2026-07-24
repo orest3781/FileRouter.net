@@ -22,12 +22,20 @@
                  spot, hidden while filing (Stop/Esc is the deliberate way
                  out of a session; a stray refresh must not end it) -->
             <StackPanel Grid.Column="1" Orientation="Horizontal">
-            <CheckBox Content="Show empty folders"
-                      IsChecked="{Binding ShowEmptyTiles}"
-                      Visibility="{Binding ShowEmptyToggleVisible,
+            <!-- one mode instead of stacked toggles: Active only (default),
+                 All (tiles stay at zero), Hidden (section gone, sweep skipped) -->
+            <TextBlock Text="Folders:" VerticalAlignment="Center" Margin="0,0,6,0"
+                       Visibility="{Binding TileControlsVisible,
+                                    Converter={StaticResource BoolToVis}}" />
+            <ComboBox SelectedIndex="{Binding TileVisibilityIndex}"
+                      Visibility="{Binding TileControlsVisible,
                                    Converter={StaticResource BoolToVis}}"
-                      VerticalAlignment="Center" Margin="0,0,12,0"
-                      ToolTip="Keep every monitored folder's tile on the dashboard, even at zero files" />
+                      VerticalAlignment="Center" Margin="0,0,12,0" MinWidth="104"
+                      ToolTip="Monitored-folder tiles: only folders holding files, every folder even at zero, or none at all">
+                <ComboBoxItem Content="Active only" />
+                <ComboBoxItem Content="All" />
+                <ComboBoxItem Content="Hidden" />
+            </ComboBox>
             <Button Command="{Binding RescanCommand}"
                     Content="Refresh" Height="26" Padding="10,0" Margin="0,2,6,2"
                     ToolTip="Rescan the inbox now">
