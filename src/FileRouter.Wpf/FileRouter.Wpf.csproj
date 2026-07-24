@@ -8,7 +8,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>FileRouter.Wpf</AssemblyName>
     <RootNamespace>FileRouter.Wpf</RootNamespace>
+    <ApplicationIcon>app.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- also a WPF resource so windows show it when run via the dotnet host -->
+    <Resource Include="app.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- the WPF SDK drops the System.IO implicit using (Shapes.Path clash);
