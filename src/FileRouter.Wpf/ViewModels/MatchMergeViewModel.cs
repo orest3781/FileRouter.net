@@ -5,7 +5,8 @@ using FileRouter.Wpf.Services;
 
 namespace FileRouter.Wpf.ViewModels;
 
-public sealed record MatchRow(string Source, string File, string Becomes, string Note);
+public sealed record MatchRow(string Source, string File, string Becomes, string Note,
+    string Status);
 
 /// <summary>Match &amp; merge: load a roster CSV, map its headers, drop PDFs in,
 /// merge each person's Control ID into the filename. Unambiguous matches merge
@@ -53,6 +54,19 @@ public sealed class MatchMergeViewModel : ObservableObject
     private string _status = "";
     public string Status { get => _status; private set => Set(ref _status, value); }
 
+    /// <summary>The header-mapping row only means something once a roster is
+    /// loaded; before that the combos are empty noise.</summary>
+    private bool _hasRoster;
+    public bool HasRoster { get => _hasRoster; private set => Set(ref _hasRoster, value); }
+
+    /// <summary>Feedback for the last add/drop.</summary>
+    private string _addNote = "";
+    public string AddNote { get => _addNote; private set => Set(ref _addNote, value); }
+
+    /// <summary>"3 ready to merge · 2 need triage · 1 already merged · 4 no match".</summary>
+    private string _bucketsLine = "";
+    public string BucketsLine { get => _bucketsLine; private set => Set(ref _bucketsLine, value); }
+
     public int MergeCount { get; private set; }
     public int AmbiguousCount { get; private set; }
     public string MergeButtonText => MergeCount > 0 ? $"Merge {MergeCount} matched" : "Merge";
@@ -93,6 +107,7 @@ public sealed class MatchMergeViewModel : ObservableObject
         }
 
         _fillingHeaders = true;
+        HasRoster = true;   // headers are in — show the mapping row
         Headers.Clear();
         foreach (var h in headers) Headers.Add(h);
         string Pick(string key, params string[] needles)
@@ -123,10 +138,12 @@ public sealed class MatchMergeViewModel : ObservableObject
         catch (RosterException ex)
         {
             _roster = null;
+            HasRoster = false;
             Status = ex.Message;
             Refresh();
             return;
         }
+        HasRoster = true;
         _saveHeaders(new Dictionary<string, string>
         {
             ["first"] = FirstHeader, ["last"] = LastHeader, ["control"] = ControlHeader,
@@ -137,10 +154,32 @@ public sealed class MatchMergeViewModel : ObservableObject
 
     public void AddFiles(IEnumerable<string> paths)
     {
+        int added = 0, ignored = 0;
         foreach (var p in paths)
+        {
             if (File.Exists(p) && p.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)
                 && !_files.Contains(p))
+            {
                 _files.Add(p);
+                added++;
+            }
+            else
+            {
+                ignored++;
+            }
+        }
+        AddNote = added == 0 && ignored > 0
+            ? $"nothing added — {ignored} item{(ignored == 1 ? " isn't a PDF" : "s aren't PDFs")} (or already listed)"
+            : ignored > 0
+                ? $"{added} added · {ignored} ignored (not PDFs, or already listed)"
+                : "";
+        Refresh();
+    }
+
+    public void RemoveFiles(IEnumerable<string> sources)
+    {
+        foreach (var s in sources.ToList()) _files.Remove(s);
+        AddNote = "";
         Refresh();
     }
 
@@ -152,6 +191,7 @@ public sealed class MatchMergeViewModel : ObservableObject
         var display = _roster is null
             ? _files.Select(f => new MatchMerge.MatchResult(f, "no_roster")).ToList()
             : _results;
+        int already = 0, noMatch = 0, noName = 0;
         foreach (var r in display)
         {
             string becomes = "", note = "";
@@ -159,15 +199,24 @@ public sealed class MatchMergeViewModel : ObservableObject
             {
                 case "merge": becomes = r.NewStem + Path.GetExtension(r.Source); merges++; break;
                 case "ambiguous": note = $"{r.Candidates!.Count} candidates — decide in Triage"; ambiguous++; break;
-                case "already": note = "already has the id"; break;
-                case "no_match": note = "no roster match"; break;
-                case "no_name": note = "no name found in the filename"; break;
+                case "already": note = "already has the id"; already++; break;
+                case "no_match": note = "no roster match"; noMatch++; break;
+                case "no_name": note = "no name found in the filename"; noName++; break;
                 case "no_roster": note = "load a roster first"; break;
             }
-            Rows.Add(new MatchRow(r.Source, Path.GetFileName(r.Source), becomes, note));
+            Rows.Add(new MatchRow(r.Source, Path.GetFileName(r.Source), becomes, note, r.Status));
         }
         MergeCount = merges;
         AmbiguousCount = ambiguous;
+
+        var parts = new List<string>();
+        if (merges > 0) parts.Add($"{merges} ready to merge");
+        if (ambiguous > 0) parts.Add($"{ambiguous} need{(ambiguous == 1 ? "s" : "")} triage");
+        if (already > 0) parts.Add($"{already} already merged");
+        if (noMatch > 0) parts.Add($"{noMatch} no match");
+        if (noName > 0) parts.Add($"{noName} no name in the filename");
+        BucketsLine = _roster is null || _files.Count == 0 ? "" : string.Join(" · ", parts);
+
         Raise(nameof(MergeButtonText));
         Raise(nameof(TriageButtonText));
         Raise(nameof(CanTriage));

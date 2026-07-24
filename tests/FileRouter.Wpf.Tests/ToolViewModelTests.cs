@@ -163,6 +163,37 @@ public class BulkRenameViewModelTests : IDisposable
     }
 
     [Fact]
+    public void CountsLineAndAddNoteTrackTheBatch()
+    {
+        var vm = new BulkRenameViewModel();
+        var a = Touch("scan_001.pdf");
+        var b = Touch("keep.pdf");
+        vm.AddFiles(new[] { a, b, a });   // duplicate ignored
+        Assert.Contains("2 added", vm.AddNote);
+        Assert.Contains("1 ignored", vm.AddNote);
+
+        vm.Find = "scan";
+        vm.Replace = "fax";
+        Assert.Equal("2 files · 1 will change", vm.CountsLine);
+
+        vm.RemoveFiles(new[] { b });
+        Assert.Equal("1 file · 1 will change", vm.CountsLine);
+        Assert.Single(vm.Preview);
+    }
+
+    [Fact]
+    public void CountsLineCallsOutUnparsedReviewNames()
+    {
+        var vm = new BulkRenameViewModel();
+        vm.AddFiles(new[] { Touch("BROWN_ADAM_4_25_1966_NYCHSRO_MEDREVIEW_566379260-1_X.pdf"),
+                            Touch("notes_only.pdf") });
+        vm.ReceivedDate = new DateTime(2024, 1, 26);
+        vm.ReviewMode = true;
+        Assert.Contains("1 will change", vm.CountsLine);
+        Assert.Contains("1 won't (name didn't parse)", vm.CountsLine);
+    }
+
+    [Fact]
     public void FindReplacePreviewMatchesThePlan()
     {
         var vm = new BulkRenameViewModel();
@@ -322,8 +353,50 @@ public class MatchMergeViewModelTests : IDisposable
     public void NoRosterShowsAHintPerFile()
     {
         var vm = Vm();
+        Assert.False(vm.HasRoster);   // the header combos stay hidden
         vm.AddFiles(new[] { Touch("20240126-EVANS-FRANK.pdf") });
         Assert.Equal("load a roster first", Assert.Single(vm.Rows).Note);
         Assert.False(vm.MergeCommand.CanExecute(null));
+        Assert.Equal("", vm.BucketsLine);
+    }
+
+    [Fact]
+    public void BucketsLineSummarizesTheGrid()
+    {
+        var vm = Vm();
+        vm.LoadRosterFrom(WriteRoster());
+        Assert.True(vm.HasRoster);
+        vm.AddFiles(new[]
+        {
+            Touch("20240126-EVANS-FRANK.pdf"),               // ready
+            Touch("20240126-BROWN-ADAM.pdf"),                // ambiguous
+            Touch("20240126-EVANS-FRANK-176797656.pdf"),     // already
+            Touch("scan_001.pdf"),                           // no name
+        });
+        Assert.Equal(
+            "1 ready to merge · 1 needs triage · 1 already merged · 1 no name in the filename",
+            vm.BucketsLine);
+        Assert.Equal("merge", vm.Rows[0].Status);
+        Assert.Equal("ambiguous", vm.Rows[1].Status);
+    }
+
+    [Fact]
+    public void RemoveFilesAndAddNotesWork()
+    {
+        var vm = Vm();
+        vm.LoadRosterFrom(WriteRoster());
+        var keep = Touch("20240126-EVANS-FRANK.pdf");
+        var drop = Touch("20240126-BROWN-ADAM.pdf");
+        var txt = Path.Combine(_dir, "notes.txt");
+        File.WriteAllText(txt, "x");
+
+        vm.AddFiles(new[] { keep, drop, txt });
+        Assert.Equal(2, vm.Rows.Count);
+        Assert.Contains("2 added", vm.AddNote);
+        Assert.Contains("1 ignored", vm.AddNote);
+
+        vm.RemoveFiles(new[] { drop });
+        Assert.Single(vm.Rows);
+        Assert.Equal(keep, vm.Rows[0].Source);
     }
 }

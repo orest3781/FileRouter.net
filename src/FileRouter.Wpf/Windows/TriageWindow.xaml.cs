@@ -74,6 +74,20 @@ public partial class TriageWindow : Window
     private void OnCandidateSelected(object sender, SelectionChangedEventArgs e) =>
         UseButton.IsEnabled = Candidates.SelectedIndex >= 0;
 
+    private void OnCandidateAccept(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (Candidates.SelectedIndex >= 0) OnUseSelected(sender, e);
+    }
+
+    private void OnCandidateKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Enter && Candidates.SelectedIndex >= 0)
+        {
+            e.Handled = true;
+            OnUseSelected(sender, e);
+        }
+    }
+
     private async void OnUseSelected(object sender, RoutedEventArgs e)
     {
         var r = Current;

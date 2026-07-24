@@ -28,6 +28,10 @@ public partial class MatchMergeWindow : Window
             _vm.AddFiles(Directory.GetFiles(dlg.FolderName, "*.pdf"));
     }
 
+    private void OnRemoveSelected(object sender, RoutedEventArgs e) =>
+        _vm.RemoveFiles(MatchGrid.SelectedItems.OfType<MatchRow>()
+            .Select(r => r.Source).ToList());
+
     private void OnTriage(object sender, RoutedEventArgs e)
     {
         var items = _vm.AmbiguousItems;

@@ -29,6 +29,10 @@ public partial class BulkRenameWindow : Window
             _vm.AddFiles(Directory.GetFiles(dlg.FolderName));
     }
 
+    private void OnRemoveSelected(object sender, RoutedEventArgs e) =>
+        _vm.RemoveFiles(PreviewGrid.SelectedItems.OfType<RenameRow>()
+            .Select(r => r.Source).ToList());
+
     private void OnCellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
     {
         if (e.EditAction != DataGridEditAction.Commit

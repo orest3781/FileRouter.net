@@ -73,6 +73,14 @@ public sealed class BulkRenameViewModel : ObservableObject
     private string _status = "";
     public string Status { get => _status; private set => Set(ref _status, value); }
 
+    /// <summary>Feedback for the last add/drop ("2 added · 1 ignored…").</summary>
+    private string _addNote = "";
+    public string AddNote { get => _addNote; private set => Set(ref _addNote, value); }
+
+    /// <summary>"12 files · 3 will change · 2 won't (name didn't parse)".</summary>
+    private string _countsLine = "";
+    public string CountsLine { get => _countsLine; private set => Set(ref _countsLine, value); }
+
     private int _changed;
     public string RenameButtonText =>
         _changed > 0 ? $"Rename {_changed} file{(_changed == 1 ? "" : "s")}" : "Rename";
@@ -88,8 +96,28 @@ public sealed class BulkRenameViewModel : ObservableObject
 
     public void AddFiles(IEnumerable<string> paths)
     {
+        int added = 0, ignored = 0;
         foreach (var p in paths)
-            if (File.Exists(p) && !_files.Contains(p)) _files.Add(p);
+        {
+            if (File.Exists(p) && !_files.Contains(p)) { _files.Add(p); added++; }
+            else ignored++;
+        }
+        AddNote = added == 0 && ignored > 0
+            ? $"nothing added — {ignored} item{(ignored == 1 ? "" : "s")} missing or already listed"
+            : ignored > 0
+                ? $"{added} added · {ignored} ignored (missing, or already listed)"
+                : "";
+        Refresh();
+    }
+
+    public void RemoveFiles(IEnumerable<string> sources)
+    {
+        foreach (var s in sources.ToList())
+        {
+            _files.Remove(s);
+            _overrides.Remove(s);
+        }
+        AddNote = "";
         Refresh();
     }
 
@@ -122,6 +150,11 @@ public sealed class BulkRenameViewModel : ObservableObject
             Preview.Add(new RenameRow(pr.Source, Path.GetFileName(pr.Source), newName,
                 string.Join(" — ", notes), pr.Changed, pr.Manual));
         }
+        var unparsed = plans.Count(p => !p.Changed && p.Note.Length > 0);
+        CountsLine = _files.Count == 0
+            ? ""
+            : $"{_files.Count} file{(_files.Count == 1 ? "" : "s")} · {_changed} will change"
+              + (unparsed > 0 ? $" · {unparsed} won't (name didn't parse)" : "");
         Raise(nameof(RenameButtonText));
         RenameCommand.RaiseCanExecuteChanged();
     }

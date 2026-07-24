@@ -28,9 +28,13 @@
                 <Button Content="Skip this file" Click="OnSkip" Height="34" Margin="0,6,0,0" />
                 <Button Content="Stop triage" Click="OnStop" Height="34" Margin="0,6,0,0" />
             </StackPanel>
+            <!-- Enter or double-click accepts the selected row — a long triage
+                 run shouldn't mean reaching for the button every time -->
             <DataGrid x:Name="Candidates" AutoGenerateColumns="False" IsReadOnly="True"
                       CanUserAddRows="False" HeadersVisibility="Column" SelectionMode="Single"
-                      SelectionChanged="OnCandidateSelected" />
+                      SelectionChanged="OnCandidateSelected"
+                      MouseDoubleClick="OnCandidateAccept"
+                      PreviewKeyDown="OnCandidateKeyDown" />
         </DockPanel>
     </Grid>
 </Window>

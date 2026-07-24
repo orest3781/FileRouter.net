@@ -6,16 +6,18 @@
         DragOver="OnDragOver" Drop="OnDrop"
         Style="{StaticResource {x:Type Window}}">
     <DockPanel Margin="14">
-        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,10,0,0">
-            <Button Content="{Binding MergeButtonText}" Command="{Binding MergeCommand}"
-                    Style="{StaticResource PrimaryButton}" MinWidth="120" Margin="0,0,8,0" />
-            <Button Content="{Binding TriageButtonText}" Click="OnTriage"
-                    IsEnabled="{Binding CanTriage}" Margin="0,0,8,0" />
-            <Button Content="Undo last merge" Command="{Binding UndoCommand}" Margin="0,0,8,0" />
-            <TextBlock Text="{Binding Status}" VerticalAlignment="Center"
-                       Style="{StaticResource StatusText}" MaxWidth="320" />
-            <Button Content="Close" Width="96" IsCancel="True" />
-        </StackPanel>
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+            <Button DockPanel.Dock="Right" Content="Close" Width="96" IsCancel="True" />
+            <StackPanel Orientation="Horizontal">
+                <Button Content="{Binding MergeButtonText}" Command="{Binding MergeCommand}"
+                        Style="{StaticResource PrimaryButton}" MinWidth="120" Margin="0,0,8,0" />
+                <Button Content="{Binding TriageButtonText}" Click="OnTriage"
+                        IsEnabled="{Binding CanTriage}" Margin="0,0,8,0" />
+                <Button Content="Undo last merge" Command="{Binding UndoCommand}" Margin="0,0,10,0" />
+                <TextBlock Text="{Binding Status}" VerticalAlignment="Center"
+                           Style="{StaticResource StatusText}" MaxWidth="300" />
+            </StackPanel>
+        </DockPanel>
 
         <Grid>
             <Grid.RowDefinitions>
@@ -23,6 +25,7 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <Grid Margin="0,0,0,8">
@@ -32,12 +35,30 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="Roster:" VerticalAlignment="Center" Margin="0,0,8,0" />
-                <TextBox Grid.Column="1" Text="{Binding RosterPath, Mode=OneWay}" IsReadOnly="True" />
+                <Grid Grid.Column="1">
+                    <TextBox Text="{Binding RosterPath, Mode=OneWay}" IsReadOnly="True" />
+                    <TextBlock Text="no roster loaded yet — pick the CSV with names and Control IDs"
+                               FontSize="11"
+                               VerticalAlignment="Center" Margin="8,0" IsHitTestVisible="False">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource SubtleText}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding RosterPath}" Value="">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
                 <Button Grid.Column="2" Content="Load spreadsheet (CSV)…" Margin="6,0,0,0"
                         Command="{Binding LoadRosterCommand}" />
             </Grid>
 
-            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+            <!-- header mapping means nothing until a roster is in -->
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8"
+                        Visibility="{Binding HasRoster, Converter={StaticResource BoolToVis}}">
                 <TextBlock Text="First name:" VerticalAlignment="Center" Margin="0,0,6,0" />
                 <ComboBox MinWidth="140" ItemsSource="{Binding Headers}"
                           SelectedItem="{Binding FirstHeader}" Margin="0,0,12,0" />
@@ -49,27 +70,65 @@
                           SelectedItem="{Binding ControlHeader}" />
             </StackPanel>
 
-            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
-                <Button Content="Add PDFs…" Click="OnAddFiles" Margin="0,0,6,0" />
-                <Button Content="Add a folder's PDFs…" Click="OnAddFolder" Margin="0,0,6,0" />
-                <Button Content="Clear" Command="{Binding ClearCommand}" />
-            </StackPanel>
+            <DockPanel Grid.Row="2" Margin="0,0,0,8">
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Add PDFs…" Click="OnAddFiles" Margin="0,0,6,0" />
+                    <Button Content="Add a folder's PDFs…" Click="OnAddFolder" Margin="0,0,6,0" />
+                    <Button Content="Remove selected" Click="OnRemoveSelected" Margin="0,0,6,0" />
+                    <Button Content="Clear" Command="{Binding ClearCommand}" Margin="0,0,10,0" />
+                    <TextBlock Text="{Binding AddNote}" Style="{StaticResource SubtleText}"
+                               FontSize="11" VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </DockPanel>
 
-            <DataGrid Grid.Row="3" ItemsSource="{Binding Rows}" AutoGenerateColumns="False"
-                      IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column"
-                      SelectionMode="Single">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="File" Binding="{Binding File}" Width="*" />
-                    <DataGridTextColumn Header="Becomes" Binding="{Binding Becomes}" Width="*" />
-                    <DataGridTextColumn Header="" Binding="{Binding Note}" Width="240">
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-                                <Setter Property="Foreground" Value="{DynamicResource Theme.SubtleText}" />
-                            </Style>
-                        </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
-                </DataGrid.Columns>
-            </DataGrid>
+            <Grid Grid.Row="3">
+                <DataGrid x:Name="MatchGrid" ItemsSource="{Binding Rows}" AutoGenerateColumns="False"
+                          IsReadOnly="True" CanUserAddRows="False" HeadersVisibility="Column"
+                          SelectionMode="Extended">
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow">
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="ToolTip" Value="{Binding Source}" />
+                            <Style.Triggers>
+                                <!-- ready rows read normal; ambiguous amber;
+                                     the rest recede -->
+                                <DataTrigger Binding="{Binding Status}" Value="ambiguous">
+                                    <Setter Property="Foreground"
+                                            Value="{DynamicResource Theme.StatusAmber}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Status}" Value="already">
+                                    <Setter Property="Foreground"
+                                            Value="{DynamicResource Theme.SubtleText}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Status}" Value="no_match">
+                                    <Setter Property="Foreground"
+                                            Value="{DynamicResource Theme.SubtleText}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Status}" Value="no_name">
+                                    <Setter Property="Foreground"
+                                            Value="{DynamicResource Theme.SubtleText}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.RowStyle>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="File" Binding="{Binding File}" Width="*" />
+                        <DataGridTextColumn Header="Becomes" Binding="{Binding Becomes}" Width="*" />
+                        <DataGridTextColumn Header="Note" Binding="{Binding Note}" Width="240" />
+                    </DataGrid.Columns>
+                </DataGrid>
+                <TextBlock Style="{StaticResource SubtleText}" Margin="10,36,10,10"
+                           IsHitTestVisible="False" TextWrapping="Wrap"
+                           Text="1)  Load the roster CSV above    2)  Add or drag PDFs anywhere on this window    3)  Merge the matches; Triage the ambiguous ones">
+                    <TextBlock.Visibility>
+                        <Binding Path="Rows.Count" Converter="{StaticResource ZeroToVis}" />
+                    </TextBlock.Visibility>
+                </TextBlock>
+            </Grid>
+
+            <TextBlock Grid.Row="4" Text="{Binding BucketsLine}" FontWeight="SemiBold"
+                       Margin="0,6,0,0" />
         </Grid>
     </DockPanel>
 </Window>
