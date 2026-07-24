@@ -59,6 +59,30 @@ jobs:
           -p:Version=${{ steps.ver.outputs.version }}
           -o out/selfcontained
 
+      # Code signing via Azure Trusted Signing — switches on automatically
+      # once the six AZURE_* secrets exist in the repo (Settings > Secrets).
+      # Until then, releases ship unsigned and this step is skipped.
+      # Enrollment: create a Trusted Signing account + identity validation +
+      # certificate profile in the Azure portal, then an app registration
+      # (client id/secret) with the Trusted Signing Certificate Profile
+      # Signer role. Docs: https://learn.microsoft.com/azure/trusted-signing/
+      - name: Sign the exes (when signing is configured)
+        if: ${{ startsWith(github.ref, 'refs/tags/') && secrets.AZURE_TENANT_ID != '' }}
+        uses: azure/trusted-signing-action@v2
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.AZURE_CERT_PROFILE }}
+          files-folder: out
+          files-folder-filter: exe
+          files-folder-recurse: true
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
       # zips download cleaner than bare exes (browsers and SmartScreen are
       # kinder to archives), and they carry a proper inner filename
       - name: Zip the assets
