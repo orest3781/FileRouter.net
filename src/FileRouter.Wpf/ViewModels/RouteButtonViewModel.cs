@@ -18,7 +18,10 @@ public sealed class RouteButtonViewModel
     public Rgb Fore { get; }
     public KeyGesture? Gesture { get; }
 
-    public RouteButtonViewModel(int index, Route route, ThemePalette palette)
+    /// <param name="problem">Result of <see cref="Config.ValidateRoute"/> for
+    /// this route, gathered off the UI thread — the probe touches the
+    /// destination folder, a network round trip on SMB shares.</param>
+    public RouteButtonViewModel(int index, Route route, ThemePalette palette, string problem)
     {
         Index = index;
 
@@ -27,7 +30,6 @@ public sealed class RouteButtonViewModel
             ?? (index < 9 ? new KeyGesture(Key.D1 + index, ModifierKeys.Control) : null);
         var gestureText = Gesture is null ? "" : HotkeyParser.Display(Gesture);
 
-        var problem = Config.ValidateRoute(route);
         Enabled = problem.Length == 0;
         DisabledReason = Enabled ? null : problem;
 

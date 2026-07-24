@@ -23,11 +23,13 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private readonly FolderWatchService _watch;
     private readonly SynchronizationContext? _uiContext;
     private readonly Func<ThemePalette> _palette;
+    private readonly IWorkScheduler _scheduler;
     private readonly System.Threading.Timer _flash;
 
     public ShellViewModel(Config cfg, string cfgPath, IPdfViewer viewer,
         IDialogService dialogs, FolderWatchService watch,
-        SynchronizationContext? uiContext = null, Func<ThemePalette>? palette = null)
+        SynchronizationContext? uiContext = null, Func<ThemePalette>? palette = null,
+        IWorkScheduler? scheduler = null)
     {
         _cfg = cfg;
         _cfgPath = cfgPath;
@@ -36,6 +38,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         _watch = watch;
         _uiContext = uiContext;
         _palette = palette ?? (() => ThemeManager.Current);
+        _scheduler = scheduler ?? new TaskWorkScheduler();
         _flash = new System.Threading.Timer(_ =>
         {
             if (_uiContext is null) FlashTick();
@@ -62,7 +65,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         OpenDeferredCommand = new RelayCommand(() => OpenFolder(_cfg.Deferred));
         RouteCommand = new AsyncRelayCommand<int>(OnRouteAsync);
         SkipCommand = new AsyncRelayCommand(OnSkipAsync);
-        UndoCommand = new RelayCommand(OnUndo, () => _session.CanUndo);
+        UndoCommand = new AsyncRelayCommand(OnUndoAsync, () => _session.CanUndo);
         StopCommand = new RelayCommand(StopSession);
         ExportHistoryCommand = new RelayCommand(ExportHistory);
 
@@ -130,21 +133,94 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     /// <summary>Called once by the window after the viewer init attempt:
     /// start watching and take the first scan.</summary>
-    public void Initialize()
+    public void Initialize() => _ = InitializeAsync();
+
+    internal async Task InitializeAsync()
     {
-        _watch.SetFolders(_cfg.Inbox, _cfg.Deferred);
+        var cfg = _cfg;
+        // Directory.Exists + watcher registration are network round trips on
+        // an SMB share — never on the UI thread
+        await _scheduler.Run(() => _watch.SetFolders(cfg.Inbox, cfg.Deferred));
         Rescan();
     }
 
     public void Rescan()
     {
         Screen = Screen.Ready;
-        ShowReady(Scanner.Scan(_cfg.Inbox, _cfg.Sort));
-        RefreshDeferredAlert();
+        _viewer.Blank();
+        _ = RefreshFoldersAsync(showErrors: true);
     }
 
-    private void ShowReady(Scanner.ScanResult scan)
+    // ---------------------------------------------------- folder snapshots
+    // Every folder read happens OFF the UI thread: over SMB a single
+    // enumeration can take seconds, and a blocked UI thread here doesn't just
+    // freeze the app — it starves the global mouse hook.
+    private sealed record FolderSnapshot(
+        Scanner.ScanResult Scan, int DeferredCount,
+        List<FolderMonitor.FolderStatus>? Statuses);
+
+    private bool _refreshBusy;
+    private bool _refreshPending;
+
+    /// <summary>Gather (thread pool) → apply (UI). Overlapping requests
+    /// coalesce: one runs, the latest waiter reruns after.</summary>
+    internal async Task RefreshFoldersAsync(bool showErrors = false)
     {
+        if (_refreshBusy) { _refreshPending = true; return; }
+        _refreshBusy = true;
+        try
+        {
+            do
+            {
+                _refreshPending = false;
+                // while filing, skip the watch-folder sweep — the dashboard is
+                // hidden and 8 network enumerations per debounce is pure churn
+                var wantStatuses = Screen != Screen.Processing;
+                var cfg = _cfg;
+                var snap = await _scheduler.Run(() => new FolderSnapshot(
+                    Scanner.Scan(cfg.Inbox, cfg.Sort),
+                    Scanner.CountFiles(cfg.Deferred),
+                    wantStatuses
+                        ? FolderMonitor.All(cfg.WatchFolders, cfg.AlertTexts)
+                            .Where(s => s.HasFiles || s.Error.Length > 0).ToList()
+                        : null));
+                ApplySnapshot(snap, showErrors);
+            } while (_refreshPending);
+        }
+        finally { _refreshBusy = false; }
+    }
+
+    private void ApplySnapshot(FolderSnapshot snap, bool showErrors)
+    {
+        ApplyDeferredCount(snap.DeferredCount);
+        if (snap.Scan.Error.Length > 0 && !showErrors && Screen != Screen.Ready)
+            return;   // a transient share hiccup must not wipe the screen
+
+        if (Screen == Screen.Processing && !_session.Done)
+        {
+            if (snap.Scan.Error.Length > 0) return;
+            var added = _session.Extend(snap.Scan.Matching);
+            if (added > 0)
+            {
+                RaiseProgress();
+                StatusLine = $"{added} new file{(added == 1 ? "" : "s")} arrived — added to this session.";
+            }
+        }
+        else if (Screen == Screen.Ready)
+        {
+            ShowReady(snap);
+        }
+        else
+        {
+            // Done: notify, don't yank — the session summary stays put
+            if (snap.Scan.Error.Length == 0 && snap.Scan.Count > 0)
+                StatusLine = $"{snap.Scan.Count} file{(snap.Scan.Count == 1 ? "" : "s")} waiting in the inbox.";
+        }
+    }
+
+    private void ShowReady(FolderSnapshot snap)
+    {
+        var scan = snap.Scan;
         _viewer.Blank();
         CountLine = scan.Error.Length > 0
             ? "Inbox problem"
@@ -159,15 +235,20 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                 ? $"{scan.IgnoredCount} other file{(scan.IgnoredCount == 1 ? "" : "s")} ignored"
                 : "");
         StartEnabled = scan.Count > 0;
-        RefreshDashboard(scan);
+        RefreshDashboard(scan, snap.Statuses ?? new List<FolderMonitor.FolderStatus>());
     }
 
-    private void RefreshDeferredAlert()
+    private void ApplyDeferredCount(int count)
     {
-        var count = Scanner.CountFiles(_cfg.Deferred);
         DeferredAlert = count > 0
             ? $"⚠ {count} set-aside file{(count == 1 ? "" : "s")} waiting — click to open"
             : "";
+    }
+
+    private async Task RefreshDeferredAsync()
+    {
+        var deferred = _cfg.Deferred;
+        ApplyDeferredCount(await _scheduler.Run(() => Scanner.CountFiles(deferred)));
     }
 
     // ----------------------------------------------------------- dashboard
@@ -191,12 +272,11 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     /// <summary>Rebuild the monitored-folder tiles (shown on Ready only, and
     /// only for folders holding files or in error), the inbox alert state, and
-    /// (re)start the 600 ms flash if anything is alerting.</summary>
-    private void RefreshDashboard(Scanner.ScanResult inboxScan)
+    /// (re)start the 600 ms flash if anything is alerting. Statuses arrive
+    /// pre-gathered off-thread.</summary>
+    private void RefreshDashboard(Scanner.ScanResult inboxScan,
+        List<FolderMonitor.FolderStatus> statuses)
     {
-        var statuses = FolderMonitor.All(_cfg.WatchFolders, _cfg.AlertTexts)
-            .Where(s => s.HasFiles || s.Error.Length > 0).ToList();
-
         Tiles.Clear();
         foreach (var s in statuses) Tiles.Add(new TileViewModel(s, _palette()));
 
@@ -241,34 +321,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     // ------------------------------------------------------------ watching
     /// <summary>Debounced watcher/poll tick: refresh the set-aside alert, and
-    /// either update the Ready count or feed new arrivals into the queue.</summary>
-    internal void OnFolderActivity()
-    {
-        RefreshDeferredAlert();
-        var scan = Scanner.Scan(_cfg.Inbox, _cfg.Sort);
-        if (scan.Error.Length > 0) return;
-        if (Screen == Screen.Processing && !_session.Done)
-        {
-            var added = _session.Extend(scan.Matching);
-            if (added > 0)
-            {
-                RaiseProgress();
-                StatusLine = $"{added} new file{(added == 1 ? "" : "s")} arrived — added to this session.";
-            }
-        }
-        else if (Screen == Screen.Ready)
-        {
-            ShowReady(scan);
-        }
-        else
-        {
-            // Done: notify, don't yank — the session summary stays put until
-            // the user goes back (the last commit's own file event lands here
-            // ~1.5s after the summary appears and must not clobber it)
-            if (scan.Count > 0)
-                StatusLine = $"{scan.Count} file{(scan.Count == 1 ? "" : "s")} waiting in the inbox.";
-        }
-    }
+    /// either update the Ready count or feed new arrivals into the queue.
+    /// All disk reads happen off-thread inside RefreshFoldersAsync.</summary>
+    internal void OnFolderActivity() => _ = RefreshFoldersAsync();
 
     // ------------------------------------------------------ processing state
     private string _progressLine = "";
@@ -328,7 +383,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     public AsyncRelayCommand<int> RouteCommand { get; }
     public AsyncRelayCommand SkipCommand { get; }
-    public RelayCommand UndoCommand { get; }
+    public AsyncRelayCommand UndoCommand { get; }
     public RelayCommand StopCommand { get; }
 
     private int? _lastRoute;
@@ -378,11 +433,20 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     private void RaiseProgress() => ProgressLine = $"{_session.Pos + 1} / {_session.Total}";
 
-    internal void StartProcessing()
+    internal void StartProcessing() => _ = StartProcessingAsync();
+
+    internal async Task StartProcessingAsync()
     {
-        var scan = Scanner.Scan(_cfg.Inbox, _cfg.Sort);
+        if (_busy) return;
+        var cfg = _cfg;
+        // the scan AND the destination probes (ProbeWritable touches every
+        // route folder — a network round trip each) run off the UI thread
+        var (scan, problems) = await _scheduler.Run(() =>
+            (Scanner.Scan(cfg.Inbox, cfg.Sort),
+             cfg.Routes.Select(Config.ValidateRoute).ToList()));
+        if (Screen == Screen.Processing) return;   // a double Start raced us
         if (scan.Count == 0) { Rescan(); return; }
-        BuildRoutes();
+        BuildRoutes(problems);
         _session.Start(scan.Matching);
         _lastRoute = null;
         Screen = Screen.Processing;
@@ -392,16 +456,17 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         DashboardVisible = false;
         StopFlash();
         ApplyFlashAll();
-        RefreshCompleter();
-        _ = LoadCurrentAsync();
+        await RefreshCompleterAsync();
+        await LoadCurrentAsync();
     }
 
-    private void BuildRoutes()
+    private void BuildRoutes(IReadOnlyList<string> problems)
     {
         Routes.Clear();
         var p = _palette();
         for (var i = 0; i < _cfg.Routes.Count; i++)
-            Routes.Add(new RouteButtonViewModel(i, _cfg.Routes[i], p));
+            Routes.Add(new RouteButtonViewModel(i, _cfg.Routes[i], p,
+                i < problems.Count ? problems[i] : ""));
         RoutesRebuilt?.Invoke();
     }
 
@@ -454,7 +519,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             try
             {
                 var route = _cfg.Routes[index];
-                var outcome = _session.CommitCurrent(typed, route);
+                // the move itself can be a copy+delete across SMB shares —
+                // never on the UI thread
+                var outcome = await _scheduler.Run(() => _session.CommitCurrent(typed, route));
                 _lastRoute = index;
                 if (outcome.Vanished)
                 {
@@ -473,8 +540,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                 await LoadCurrentAsync();   // reload the same doc; nothing moved
                 return;
             }
-            RefreshDeferredAlert();
-            RefreshCompleter();   // the just-used name is now suggestable
+            await RefreshDeferredAsync();
+            await RefreshCompleterAsync();   // the just-used name is now suggestable
             await LoadCurrentAsync();
         }
         finally { _busy = false; }
@@ -489,7 +556,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             await _viewer.ReleaseAsync();
             try
             {
-                var outcome = _session.SkipCurrent();
+                var outcome = await _scheduler.Run(() => _session.SkipCurrent());
                 if (outcome.Vanished)
                     StatusLine = "That file disappeared from the inbox — logged and moved on.";
                 else
@@ -500,13 +567,15 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             {
                 _dialogs.Warn(ex.Message, "FileRouter — set-aside failed");
             }
-            RefreshDeferredAlert();
+            await RefreshDeferredAsync();
             await LoadCurrentAsync();
         }
         finally { _busy = false; }
     }
 
-    internal void OnUndo()
+    internal void OnUndo() => _ = OnUndoAsync();
+
+    internal async Task OnUndoAsync()
     {
         if (_busy) return;
         if (!_session.CanUndo) { StatusLine = "Nothing to undo."; return; }
@@ -515,7 +584,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         {
             try
             {
-                var (filed, original) = _session.UndoLast();
+                var (filed, original) = await _scheduler.Run(() => _session.UndoLast());
                 StatusLine = $"Undid {Path.GetFileName(filed)} → {Path.GetFileName(original)}";
                 HideLastAction();   // the card must never claim an undone filing
             }
@@ -526,9 +595,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             }
             if (Screen == Screen.Done)   // undo from Done re-enters the session
                 Screen = Screen.Processing;
-            RefreshDeferredAlert();
-            RefreshCompleter();   // a reverted name may drop out of the suggestions
-            _ = LoadCurrentAsync();
+            await RefreshDeferredAsync();
+            await RefreshCompleterAsync();   // a reverted name may drop out
+            await LoadCurrentAsync();
         }
         finally { _busy = false; }
     }
@@ -568,7 +637,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// fresh daily backup for the NEW db — a gap in the WinForms port), save
     /// (warning, not crashing, on a read-only file), rebuild watchers, refresh
     /// Ready. Settings is only reachable from Ready, so no live session.</summary>
-    internal void ApplySettings(Config cfg)
+    internal void ApplySettings(Config cfg) => _ = ApplySettingsAsync(cfg);
+
+    internal async Task ApplySettingsAsync(Config cfg)
     {
         var oldDb = ResolvePath(_cfg.HistoryDb, _cfgPath);
         var newDb = ResolvePath(cfg.HistoryDb, _cfgPath);
@@ -577,14 +648,20 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             _dialogs.Warn(error, "FileRouter — settings not saved");
         if (!string.Equals(oldDb, newDb, StringComparison.OrdinalIgnoreCase))
         {
-            _history.Dispose();
-            HistoryBackup.BackupDaily(newDb,
-                Path.Combine(Path.GetDirectoryName(Path.GetFullPath(newDb))!, "backups"),
-                DateTime.Now);
-            _history = new History(newDb);
+            // the backup copies the whole DB file — off the UI thread, it can
+            // live on a share
+            var old = _history;
+            _history = await _scheduler.Run(() =>
+            {
+                old.Dispose();
+                HistoryBackup.BackupDaily(newDb,
+                    Path.Combine(Path.GetDirectoryName(Path.GetFullPath(newDb))!, "backups"),
+                    DateTime.Now);
+                return new History(newDb);
+            });
         }
         _session = new Session(cfg, _history);
-        _watch.SetFolders(cfg.Inbox, cfg.Deferred);
+        await _scheduler.Run(() => _watch.SetFolders(cfg.Inbox, cfg.Deferred));
         Raise(nameof(UppercaseNames));
         SettingsApplied?.Invoke();
         Rescan();
@@ -592,13 +669,16 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     /// <summary>File → Export history: the whole audit table as a spreadsheet
     /// (with the formula-injection guard History applies).</summary>
-    internal void ExportHistory()
+    internal void ExportHistory() => _ = ExportHistoryAsync();
+
+    internal async Task ExportHistoryAsync()
     {
         var dest = _dialogs.AskSaveFile("Spreadsheet files (*.csv)|*.csv", "filerouter_history.csv");
         if (dest is null) return;
         try
         {
-            var count = _history.ExportCsv(dest);
+            var history = _history;
+            var count = await _scheduler.Run(() => history.ExportCsv(dest));
             _dialogs.Info($"Exported {count} rows to {dest}", "FileRouter");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -650,14 +730,16 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<string> Suggestions { get; } = new();
 
-    private void RefreshCompleter()
+    private async Task RefreshCompleterAsync()
     {
-        var seeds = Completer.LoadSeedNames(
-            string.IsNullOrWhiteSpace(_cfg.NamesFile) ? null : ResolvePath(_cfg.NamesFile, _cfgPath));
-        // polished once here: a seed list with spaces still suggests and
-        // completes correctly when a word separator is configured
-        _allNames = Completer.Names(_history, seeds)
-            .Select(Polish).Distinct().ToList();
+        var namesFile = string.IsNullOrWhiteSpace(_cfg.NamesFile)
+            ? null : ResolvePath(_cfg.NamesFile, _cfgPath);
+        var history = _history;
+        // seed-file read + SQLite query off-thread; polished once here so a
+        // seed list with spaces still suggests correctly with a separator set
+        _allNames = await _scheduler.Run(() =>
+            Completer.Names(history, Completer.LoadSeedNames(namesFile))
+                .Select(Polish).Distinct().ToList());
         RefreshSuggestions();
     }
 
