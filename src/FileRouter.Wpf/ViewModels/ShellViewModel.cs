@@ -93,6 +93,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                 Raise(nameof(IsReady));
                 Raise(nameof(IsProcessing));
                 Raise(nameof(IsDone));
+                Raise(nameof(ShowEmptyToggleVisible));
             }
         }
     }
@@ -182,7 +183,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                     Scanner.CountFiles(cfg.Deferred),
                     wantStatuses
                         ? FolderMonitor.All(cfg.WatchFolders, cfg.AlertTexts)
-                            .Where(s => s.HasFiles || s.Error.Length > 0).ToList()
+                            .Where(s => cfg.ShowEmptyTiles || s.HasFiles || s.Error.Length > 0)
+                            .ToList()
                         : null));
                 ApplySnapshot(snap, showErrors);
             } while (_refreshPending);
@@ -259,6 +261,25 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     private bool _dashboardVisible;
     public bool DashboardVisible { get => _dashboardVisible; private set => Set(ref _dashboardVisible, value); }
+
+    /// <summary>Header-bar toggle: keep every monitored folder's tile visible
+    /// even at zero files. Persisted, and refreshes the dashboard live.</summary>
+    public bool ShowEmptyTiles
+    {
+        get => _cfg.ShowEmptyTiles;
+        set
+        {
+            if (_cfg.ShowEmptyTiles == value) return;
+            _cfg.ShowEmptyTiles = value;
+            Raise();
+            SaveConfigNow();
+            _ = RefreshFoldersAsync();
+        }
+    }
+
+    /// <summary>The toggle only appears on Ready, and only when there are
+    /// monitored folders to show.</summary>
+    public bool ShowEmptyToggleVisible => IsReady && _cfg.WatchFolders.Count > 0;
 
     private bool _inboxAlerting;
     public bool InboxAlerting { get => _inboxAlerting; private set => Set(ref _inboxAlerting, value); }
@@ -663,6 +684,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         _session = new Session(cfg, _history);
         await _scheduler.Run(() => _watch.SetFolders(cfg.Inbox, cfg.Deferred));
         Raise(nameof(UppercaseNames));
+        Raise(nameof(ShowEmptyTiles));
+        Raise(nameof(ShowEmptyToggleVisible));
         SettingsApplied?.Invoke();
         Rescan();
     }

@@ -21,7 +21,14 @@
             <!-- rescan lives in the header, top-right — always in the same
                  spot, hidden while filing (Stop/Esc is the deliberate way
                  out of a session; a stray refresh must not end it) -->
-            <Button Grid.Column="1" Command="{Binding RescanCommand}"
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+            <CheckBox Content="Show empty folders"
+                      IsChecked="{Binding ShowEmptyTiles}"
+                      Visibility="{Binding ShowEmptyToggleVisible,
+                                   Converter={StaticResource BoolToVis}}"
+                      VerticalAlignment="Center" Margin="0,0,12,0"
+                      ToolTip="Keep every monitored folder's tile on the dashboard, even at zero files" />
+            <Button Command="{Binding RescanCommand}"
                     Content="Refresh" Height="26" Padding="10,0" Margin="0,2,6,2"
                     ToolTip="Rescan the inbox now">
                 <Button.Style>
@@ -40,6 +47,7 @@
                     </Style>
                 </Button.Style>
             </Button>
+            </StackPanel>
 
             <Menu Padding="4,2">
             <MenuItem Header="_File">

@@ -155,6 +155,52 @@ public class DashboardTests
     }
 
     [Fact]
+    public void ShowEmptyTilesKeepsAnEmptyFolderOnTheDashboard()
+    {
+        using var fx = WithWatchFolder(out _, cfg => cfg.ShowEmptyTiles = true);
+        fx.Shell.Initialize();
+
+        var tile = Assert.Single(fx.Shell.Tiles);
+        Assert.Equal("0", tile.CountText);
+        Assert.False(tile.Alerting);
+        Assert.True(fx.Shell.DashboardVisible);
+        Assert.False(fx.Shell.FlashRunning);
+    }
+
+    [Fact]
+    public void TogglingShowEmptyRefreshesLiveAndPersists()
+    {
+        using var fx = WithWatchFolder(out _);
+        fx.Shell.Initialize();
+        Assert.Empty(fx.Shell.Tiles);
+        Assert.True(fx.Shell.ShowEmptyToggleVisible);   // Ready + folders configured
+
+        fx.Shell.ShowEmptyTiles = true;
+        Assert.Single(fx.Shell.Tiles);
+        Assert.True(fx.Shell.DashboardVisible);
+        Assert.True(Config.Load(fx.CfgPath).ShowEmptyTiles);   // survived the save
+
+        fx.Shell.ShowEmptyTiles = false;
+        Assert.Empty(fx.Shell.Tiles);
+        Assert.False(fx.Shell.DashboardVisible);
+        Assert.False(Config.Load(fx.CfgPath).ShowEmptyTiles);
+    }
+
+    [Fact]
+    public void ToggleHidesWithoutWatchFoldersAndWhileFiling()
+    {
+        using var bare = new ShellFixture();
+        bare.Shell.Initialize();
+        Assert.False(bare.Shell.ShowEmptyToggleVisible);   // nothing to show
+
+        using var fx = WithWatchFolder(out _);
+        fx.AddInboxFile();
+        fx.Shell.Initialize();
+        fx.Shell.StartProcessing();
+        Assert.False(fx.Shell.ShowEmptyToggleVisible);     // hidden while filing
+    }
+
+    [Fact]
     public void StartingASessionHidesTheDashboardAndStopsTheFlash()
     {
         using var fx = WithWatchFolder(out var watched);
