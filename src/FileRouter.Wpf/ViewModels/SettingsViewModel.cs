@@ -61,6 +61,12 @@ public sealed class RouteEditVm : ObservableObject
     }
     public bool HasHotkeyNote => HotkeyNote.Length > 0;
 
+    /// <summary>Ghost text inside an EMPTY hotkey box: the automatic key this
+    /// route gets from its list position ("Ctrl+1 · automatic") — so the list
+    /// showing a key while the box sits blank isn't a mystery.</summary>
+    private string _hotkeyPlaceholder = "";
+    public string HotkeyPlaceholder { get => _hotkeyPlaceholder; private set => Set(ref _hotkeyPlaceholder, value); }
+
     internal void SetDerived(string previewLabel, Rgb back, Rgb fore,
         string hotkeyNote, string gestureText)
     {
@@ -69,6 +75,9 @@ public sealed class RouteEditVm : ObservableObject
         PreviewFore = fore;
         HotkeyNote = hotkeyNote;
         GestureText = gestureText;
+        HotkeyPlaceholder = Hotkey.Trim().Length == 0 && gestureText.Length > 0
+            ? $"{gestureText} · automatic"
+            : "";
     }
 
     /// <summary>Unknown per-route keys from the original config, carried

@@ -87,6 +87,25 @@ public class SettingsViewModelTests : IDisposable
     }
 
     [Fact]
+    public void BlankHotkeyShowsTheAutomaticKeyAsPlaceholder()
+    {
+        // the route list shows the effective key (Ctrl+N by position) even
+        // when the hotkey box is blank — the box says so via ghost text
+        var cfg = new Config { Routes = { new Route { Label = "A", Path = _dir } } };
+        var vm = new SettingsViewModel(cfg, _dialogs);
+        Assert.Equal("Ctrl+1 · automatic", vm.Routes[0].HotkeyPlaceholder);
+
+        vm.AddRouteCommand.Execute(null);            // a fresh destination
+        Assert.Equal("Ctrl+2 · automatic", vm.Routes[1].HotkeyPlaceholder);
+
+        vm.Routes[1].Hotkey = "Ctrl+F2";             // explicit key: no ghost
+        Assert.Equal("", vm.Routes[1].HotkeyPlaceholder);
+
+        vm.Routes[1].Hotkey = "";                    // cleared: automatic again
+        Assert.Equal("Ctrl+2 · automatic", vm.Routes[1].HotkeyPlaceholder);
+    }
+
+    [Fact]
     public void ReservedHotkeyBlocksOkAndGetsALiveNote()
     {
         var cfg = new Config

@@ -302,9 +302,18 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Text="Hotkey:" Style="{StaticResource FieldLabel}" />
-                                <TextBox Grid.Column="1" Text="{Binding Hotkey, UpdateSourceTrigger=PropertyChanged}"
-                                         PreviewKeyDown="HotkeyBox_PreviewKeyDown"
-                                         AutomationProperties.Name="Hotkey — press keys to set" />
+                                <Grid Grid.Column="1">
+                                    <TextBox Text="{Binding Hotkey, UpdateSourceTrigger=PropertyChanged}"
+                                             PreviewKeyDown="HotkeyBox_PreviewKeyDown"
+                                             AutomationProperties.Name="Hotkey — press keys to set" />
+                                    <!-- ghost text while blank: the automatic
+                                         Ctrl+1-9 this route gets from its
+                                         position in the list -->
+                                    <TextBlock Text="{Binding HotkeyPlaceholder}"
+                                               Style="{StaticResource SubtleText}"
+                                               VerticalAlignment="Center" Margin="7,0,0,0"
+                                               IsHitTestVisible="False" />
+                                </Grid>
                                 <TextBlock Grid.Column="2" Style="{StaticResource SubtleText}"
                                            VerticalAlignment="Center" Margin="8,0,0,0"
                                            TextWrapping="Wrap"
