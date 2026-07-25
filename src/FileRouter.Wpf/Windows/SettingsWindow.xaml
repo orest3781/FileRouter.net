@@ -28,6 +28,41 @@
         <Style x:Key="SectionTab" TargetType="TabItem" BasedOn="{StaticResource {x:Type TabItem}}">
             <Setter Property="MinWidth" Value="120" />
         </Style>
+        <!-- theme picker cards: a mini mock of each palette beats three lines
+             of radio text. Still a RadioButton underneath — keyboard, group
+             semantics, and screen-reader name all intact. -->
+        <Style x:Key="ThemeCard" TargetType="RadioButton">
+            <Setter Property="GroupName" Value="ThemeMode" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Margin" Value="0,0,10,0" />
+            <Setter Property="Foreground" Value="{DynamicResource Theme.Text}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Sel" BorderThickness="2" CornerRadius="10"
+                                BorderBrush="Transparent" Background="Transparent" Padding="4">
+                            <StackPanel>
+                                <ContentPresenter />
+                                <TextBlock x:Name="Lbl" Text="{TemplateBinding Tag}"
+                                           HorizontalAlignment="Center" Margin="0,6,0,0"
+                                           Foreground="{TemplateBinding Foreground}" />
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Sel" Property="BorderBrush"
+                                        Value="{DynamicResource Theme.Border}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Sel" Property="BorderBrush"
+                                        Value="{DynamicResource Theme.Accent}" />
+                                <Setter TargetName="Lbl" Property="FontWeight" Value="SemiBold" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <!-- 22px + 3px gap keeps all 12 swatches on ONE row in the detail
              columns (12 × 25 = 300px); at 24 + 4 they wrapped and the second
              row clipped against the editor's bottom edge -->
@@ -651,53 +686,133 @@
 
             <!-- ============================================== Appearance -->
             <TabItem Header="Appearance">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel Margin="16,8">
-                    <TextBlock Text="Colors" FontWeight="Bold" Margin="0,0,0,10" />
-                    <RadioButton Content="Follow Windows light/dark mode"
-                                 IsChecked="{Binding ThemeAuto}" GroupName="ThemeMode" />
-                    <RadioButton Content="Always light" IsChecked="{Binding ThemeLight}"
-                                 GroupName="ThemeMode" />
-                    <RadioButton Content="Always dark" IsChecked="{Binding ThemeDark}"
-                                 GroupName="ThemeMode" />
+                    <TextBlock Text="Colors" Style="{StaticResource SectionText}" Margin="0,0,0,10" />
+                    <StackPanel Orientation="Horizontal">
+                        <!-- Auto: half of each world -->
+                        <RadioButton Style="{StaticResource ThemeCard}" Tag="Auto"
+                                     IsChecked="{Binding ThemeAuto}"
+                                     AutomationProperties.Name="Follow Windows light/dark mode"
+                                     ToolTip="Follow the Windows light/dark setting">
+                            <Grid Width="112" Height="70">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border CornerRadius="8,0,0,8" Background="#F4F4F7"
+                                        BorderBrush="#D8D8DE" BorderThickness="1,1,0,1">
+                                    <StackPanel Margin="9,9,5,9">
+                                        <Border Height="16" CornerRadius="4" Background="#FFFFFF"
+                                                BorderBrush="#E2E2E8" BorderThickness="1" />
+                                        <Rectangle Height="4" RadiusX="2" RadiusY="2" Fill="#9A9AA3"
+                                                   Margin="0,7,8,0" />
+                                        <Border Width="30" Height="11" CornerRadius="5.5"
+                                                Background="#1565C0" HorizontalAlignment="Left"
+                                                Margin="0,8,0,0" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="1" CornerRadius="0,8,8,0" Background="#1B1B1F"
+                                        BorderBrush="#3A3A41" BorderThickness="0,1,1,1">
+                                    <StackPanel Margin="5,9,9,9">
+                                        <Border Height="16" CornerRadius="4" Background="#26262B"
+                                                BorderBrush="#3A3A41" BorderThickness="1" />
+                                        <Rectangle Height="4" RadiusX="2" RadiusY="2" Fill="#7F7F88"
+                                                   Margin="0,7,8,0" />
+                                        <Border Width="30" Height="11" CornerRadius="5.5"
+                                                Background="#4C8FD6" HorizontalAlignment="Left"
+                                                Margin="0,8,0,0" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </RadioButton>
+                        <RadioButton Style="{StaticResource ThemeCard}" Tag="Light"
+                                     IsChecked="{Binding ThemeLight}"
+                                     AutomationProperties.Name="Always light">
+                            <Border Width="112" Height="70" CornerRadius="8" Background="#F4F4F7"
+                                    BorderBrush="#D8D8DE" BorderThickness="1">
+                                <StackPanel Margin="10,9">
+                                    <Border Height="16" CornerRadius="4" Background="#FFFFFF"
+                                            BorderBrush="#E2E2E8" BorderThickness="1" />
+                                    <Rectangle Height="4" RadiusX="2" RadiusY="2" Fill="#9A9AA3"
+                                               Margin="0,7,26,0" />
+                                    <Border Width="44" Height="11" CornerRadius="5.5"
+                                            Background="#1565C0" HorizontalAlignment="Left"
+                                            Margin="0,8,0,0" />
+                                </StackPanel>
+                            </Border>
+                        </RadioButton>
+                        <RadioButton Style="{StaticResource ThemeCard}" Tag="Dark"
+                                     IsChecked="{Binding ThemeDark}"
+                                     AutomationProperties.Name="Always dark">
+                            <Border Width="112" Height="70" CornerRadius="8" Background="#1B1B1F"
+                                    BorderBrush="#3A3A41" BorderThickness="1">
+                                <StackPanel Margin="10,9">
+                                    <Border Height="16" CornerRadius="4" Background="#26262B"
+                                            BorderBrush="#3A3A41" BorderThickness="1" />
+                                    <Rectangle Height="4" RadiusX="2" RadiusY="2" Fill="#7F7F88"
+                                               Margin="0,7,26,0" />
+                                    <Border Width="44" Height="11" CornerRadius="5.5"
+                                            Background="#4C8FD6" HorizontalAlignment="Left"
+                                            Margin="0,8,0,0" />
+                                </StackPanel>
+                            </Border>
+                        </RadioButton>
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource CaptionText}" Margin="4,6,0,0"
+                               Text="Every text pairing in both palettes meets WCAG AA contrast — enforced by the test suite." />
 
-                    <TextBlock Text="Text" FontWeight="Bold" Margin="0,14,0,10" />
+                    <TextBlock Text="Text" Style="{StaticResource SectionText}" Margin="0,16,0,10" />
                     <Grid Style="{StaticResource FieldRow}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="130" />
                             <ColumnDefinition Width="220" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="App font:" Style="{StaticResource FieldLabel}" />
+                        <!-- every choice previews itself -->
                         <ComboBox Grid.Column="1"
                                   ItemsSource="{x:Static vm:SettingsViewModel.FontChoices}"
                                   SelectedValuePath="Key"
-                                  SelectedValue="{Binding UiFontFamily}"
-                                  ItemTemplate="{StaticResource KvpValueTemplate}" />
+                                  SelectedValue="{Binding UiFontFamily}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Value}"
+                                               FontFamily="{Binding Key, Converter={StaticResource FontFamilyString}}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
                     </Grid>
                     <Grid Style="{StaticResource FieldRow}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="130" />
-                            <ColumnDefinition Width="80" />
+                            <ColumnDefinition Width="60" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="Base text size:" Style="{StaticResource FieldLabel}" />
-                        <TextBox Grid.Column="1" Text="{Binding UiFontSizeText, UpdateSourceTrigger=PropertyChanged}" />
-                        <StackPanel Grid.Column="2" Margin="4,0,0,0">
-                            <Button Content="▲" FontSize="8" Padding="6,1" Click="OnSizeUp"
-                                    AutomationProperties.Name="Larger text" />
-                            <Button Content="▼" FontSize="8" Padding="6,1" Margin="0,2,0,0"
-                                    Click="OnSizeDown" AutomationProperties.Name="Smaller text" />
+                        <TextBox Grid.Column="1" Text="{Binding UiFontSizeText, UpdateSourceTrigger=PropertyChanged}"
+                                 AutomationProperties.Name="Base text size" />
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0"
+                                    VerticalAlignment="Center">
+                            <Button Content="12" Tag="12" Click="OnFontSizePreset" MinWidth="34"
+                                    Style="{StaticResource ChipButton}" />
+                            <Button Content="14" Tag="14" Click="OnFontSizePreset" MinWidth="34"
+                                    Style="{StaticResource ChipButton}" Margin="4,0,0,0" />
+                            <Button Content="16" Tag="16" Click="OnFontSizePreset" MinWidth="34"
+                                    Style="{StaticResource ChipButton}" Margin="4,0,0,0" />
+                            <Button Content="18" Tag="18" Click="OnFontSizePreset" MinWidth="34"
+                                    Style="{StaticResource ChipButton}" Margin="4,0,0,0" />
                         </StackPanel>
                         <TextBlock Grid.Column="3" Style="{StaticResource SubtleText}"
                                    VerticalAlignment="Center" Margin="8,0,0,0"
-                                   Text="6–72, or blank for the default" />
+                                   Text="6–72 · blank = default" TextTrimming="CharacterEllipsis" />
                     </Grid>
 
                     <!-- what the choices actually look like, live -->
-                    <TextBlock Text="Sample" FontWeight="Bold" Margin="0,14,0,6" />
+                    <TextBlock Text="Sample" Style="{StaticResource SectionText}" Margin="0,14,0,6" />
                     <Border Background="{DynamicResource Theme.Surface}"
                             BorderBrush="{DynamicResource Theme.Border}" BorderThickness="1"
-                            CornerRadius="4" Padding="12,10">
+                            CornerRadius="8" Padding="12,10">
                         <StackPanel>
                             <TextBlock Text="Will be filed as:  20240115-SMITH JOHN-12345.pdf"
                                        FontFamily="{Binding UiFontFamily, Converter={StaticResource FontFamilyString}}"
@@ -711,6 +826,7 @@
                         </StackPanel>
                     </Border>
                 </StackPanel>
+                </ScrollViewer>
             </TabItem>
 
             <!-- ============================================== Tools & data -->

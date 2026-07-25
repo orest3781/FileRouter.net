@@ -71,15 +71,9 @@ public partial class SettingsWindow : Window
             w.Color = color;
     }
 
-    private void OnSizeUp(object sender, RoutedEventArgs e) => NudgeSize(+1);
-    private void OnSizeDown(object sender, RoutedEventArgs e) => NudgeSize(-1);
-
-    /// <summary>Step the base text size from its effective value (blank = the
-    /// 14pt default), clamped to the valid 6-72 range.</summary>
-    private void NudgeSize(int delta)
+    private void OnFontSizePreset(object sender, RoutedEventArgs e)
     {
-        var current = int.TryParse(_vm.UiFontSizeText.Trim(), out var n) ? n : 14;
-        _vm.UiFontSizeText = Math.Clamp(current + delta, 6, 72).ToString();
+        if (sender is Button { Tag: string size }) _vm.UiFontSizeText = size;
     }
 
     // ------------------------------------------- list drag-and-drop reorder

@@ -40,11 +40,11 @@ public sealed class FontFamilyStringConverter : IValueConverter
         var name = (value as string)?.Trim() ?? "";
         try
         {
-            return new FontFamily(name.Length == 0 ? "Segoe UI" : name);
+            return new FontFamily(name.Length == 0 ? App.DefaultFontChain : name);
         }
         catch (ArgumentException)
         {
-            return new FontFamily("Segoe UI");
+            return new FontFamily(App.DefaultFontChain);
         }
     }
 
