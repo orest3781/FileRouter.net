@@ -12,8 +12,10 @@
         </DockPanel>
 
         <DockPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+            <!-- IsCancel: Esc closes, like every other tool window -->
+            <Button Content="Close" Width="96" IsCancel="True" DockPanel.Dock="Right" />
             <Button Content="Export to spreadsheet…" Command="{Binding ExportCommand}"
-                    DockPanel.Dock="Right" />
+                    DockPanel.Dock="Right" Margin="0,0,8,0" />
             <Button Content="Show all" Command="{Binding ShowAllCommand}"
                     DockPanel.Dock="Right" Margin="0,0,8,0"
                     Visibility="{Binding CanShowAll, Converter={StaticResource BoolToVis}}" />

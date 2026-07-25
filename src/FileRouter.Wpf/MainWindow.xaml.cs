@@ -240,20 +240,30 @@ public partial class MainWindow : Window
     private readonly List<System.Windows.Input.KeyBinding> _routeBindings = new();
 
     /// <summary>Config-driven route hotkeys: rebuilt with the route buttons at
-    /// every session start (and after Settings changes).</summary>
+    /// every session start (and after Settings changes). Digit hotkeys bind
+    /// the numpad twin too — a gesture matches exact keys, and nobody thinks
+    /// of Ctrl+NumPad1 as a different keystroke from Ctrl+1.</summary>
     private void RebindRouteHotkeys()
     {
         foreach (var b in _routeBindings) InputBindings.Remove(b);
         _routeBindings.Clear();
-        foreach (var route in Shell.Routes)
+
+        void Bind(System.Windows.Input.Key key, System.Windows.Input.ModifierKeys mods, int index)
         {
-            if (route.Gesture is null || !route.Enabled) continue;
-            var binding = new System.Windows.Input.KeyBinding(Shell.RouteCommand, route.Gesture)
+            var binding = new System.Windows.Input.KeyBinding(Shell.RouteCommand, key, mods)
             {
-                CommandParameter = route.Index,
+                CommandParameter = index,
             };
             _routeBindings.Add(binding);
             InputBindings.Add(binding);
+        }
+
+        foreach (var route in Shell.Routes)
+        {
+            if (route.Gesture is null || !route.Enabled) continue;
+            Bind(route.Gesture.Key, route.Gesture.Modifiers, route.Index);
+            if (HotkeyParser.DigitTwin(route.Gesture.Key) is not System.Windows.Input.Key.None and var twin)
+                Bind(twin, route.Gesture.Modifiers, route.Index);
         }
     }
 

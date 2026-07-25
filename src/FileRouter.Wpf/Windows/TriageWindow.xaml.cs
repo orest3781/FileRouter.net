@@ -112,6 +112,4 @@ public partial class TriageWindow : Window
         _index++;
         await ShowCurrentAsync();
     }
-
-    private void OnStop(object sender, RoutedEventArgs e) => Close();
 }

@@ -448,10 +448,19 @@ public sealed class SettingsViewModel : ObservableObject
                         System.Windows.Input.ModifierKeys.Control) : null);
             var gestureText = gesture is null ? "" : HotkeyParser.Display(gesture);
 
+            // the note mirrors the OK-time hard errors, live, worst first
             var note = "";
+            var rawHotkey = r.Hotkey.Trim();
+            if (rawHotkey.Length > 0 && !HotkeyParser.TryParse(rawHotkey, out _, out _))
+                note = $"can't understand \"{rawHotkey}\"";
+            else if (rawHotkey.Length > 0 && HotkeyParser.ToGesture(rawHotkey) is null)
+                note = $"needs a modifier — try Ctrl+{rawHotkey}";
+            else if (gesture is not null
+                     && HotkeyParser.ReservedUse(gesture.Modifiers, gesture.Key) is { } use)
+                note = $"{gestureText} already means {use} in the app";
             if (gestureText.Length > 0)
             {
-                if (claimed.TryGetValue(gestureText, out var other))
+                if (note.Length == 0 && claimed.TryGetValue(gestureText, out var other))
                     note = $"{gestureText} is already used by \"{other}\"";
                 else
                     claimed[gestureText] = r.Label.Trim();
@@ -877,8 +886,11 @@ public sealed class SettingsViewModel : ObservableObject
             else if (!labels.Add(label))
                 errors.Add($"Two destination buttons are both called \"{label}\".");
 
-            if (r.Hotkey.Trim().Length > 0 && !HotkeyParser.TryParse(r.Hotkey, out _, out _))
+            var rawHotkey = r.Hotkey.Trim();
+            if (rawHotkey.Length > 0 && !HotkeyParser.TryParse(rawHotkey, out _, out _))
                 errors.Add($"\"{label}\": can't understand the hotkey \"{r.Hotkey}\".");
+            else if (rawHotkey.Length > 0 && HotkeyParser.ToGesture(rawHotkey) is null)
+                errors.Add($"\"{label}\": the hotkey \"{r.Hotkey}\" needs a modifier — try \"Ctrl+{rawHotkey}\".");
             if (!r.ColorValid)
                 errors.Add($"\"{label}\": \"{r.Color}\" is not a color (try #2e7d32).");
         }
@@ -893,6 +905,8 @@ public sealed class SettingsViewModel : ObservableObject
                         System.Windows.Input.ModifierKeys.Control) : null);
             if (gesture is null) continue;
             var text = HotkeyParser.Display(gesture);
+            if (HotkeyParser.ReservedUse(gesture.Modifiers, gesture.Key) is { } use)
+                errors.Add($"\"{Routes[i].Label}\": {text} already means {use} everywhere in the app.");
             if (seen.TryGetValue(text, out var other))
                 errors.Add($"\"{Routes[i].Label}\" and \"{other}\" both answer to {text}.");
             else

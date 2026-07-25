@@ -26,7 +26,8 @@
                 <Button x:Name="UseButton" Content="Use selected id" Click="OnUseSelected"
                         Style="{StaticResource PrimaryButton}" Height="40" IsEnabled="False" />
                 <Button Content="Skip this file" Click="OnSkip" Height="34" Margin="0,6,0,0" />
-                <Button Content="Stop triage" Click="OnStop" Height="34" Margin="0,6,0,0" />
+                <!-- IsCancel: click or Esc — merges already done stay done -->
+                <Button Content="Stop triage" IsCancel="True" Height="34" Margin="0,6,0,0" />
             </StackPanel>
             <!-- Enter or double-click accepts the selected row — a long triage
                  run shouldn't mean reaching for the button every time -->

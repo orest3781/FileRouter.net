@@ -52,7 +52,9 @@ public static class HotkeyParser
         }
     }
 
-    /// <summary>Human-readable form of a gesture ("Ctrl+1", "F2").</summary>
+    /// <summary>Human-readable form of a gesture ("Ctrl+1", "F2"). Numpad
+    /// digits display like top-row ones — the runtime binds both, and showing
+    /// one name keeps duplicate detection honest ("Ctrl+NumPad1" IS "Ctrl+1").</summary>
     public static string Display(KeyGesture gesture)
     {
         var parts = new List<string>();
@@ -63,8 +65,29 @@ public static class HotkeyParser
         parts.Add(gesture.Key switch
         {
             >= Key.D0 and <= Key.D9 => ((char)('0' + (gesture.Key - Key.D0))).ToString(),
+            >= Key.NumPad0 and <= Key.NumPad9 => ((char)('0' + (gesture.Key - Key.NumPad0))).ToString(),
             _ => gesture.Key.ToString(),
         });
         return string.Join("+", parts);
     }
+
+    /// <summary>What the shell's fixed key bindings mean, or null when the
+    /// combination is free. A route hotkey must not claim one of these — its
+    /// binding registers later and would silently shadow the app action.</summary>
+    public static string? ReservedUse(ModifierKeys mods, Key key) => (mods, key) switch
+    {
+        (ModifierKeys.Control, Key.K) => "Set aside",
+        (ModifierKeys.Control | ModifierKeys.Shift, Key.Z) => "Undo",
+        (ModifierKeys.Control, Key.OemComma) => "Settings",
+        _ => null,
+    };
+
+    /// <summary>The numpad twin of a top-row digit (and vice versa), or None.
+    /// WPF gestures match exact keys; users expect either "1" to work.</summary>
+    public static Key DigitTwin(Key key) => key switch
+    {
+        >= Key.D0 and <= Key.D9 => Key.NumPad0 + (key - Key.D0),
+        >= Key.NumPad0 and <= Key.NumPad9 => Key.D0 + (key - Key.NumPad0),
+        _ => Key.None,
+    };
 }

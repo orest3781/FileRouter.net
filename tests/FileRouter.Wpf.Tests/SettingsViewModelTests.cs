@@ -87,6 +87,50 @@ public class SettingsViewModelTests : IDisposable
     }
 
     [Fact]
+    public void ReservedHotkeyBlocksOkAndGetsALiveNote()
+    {
+        var cfg = new Config
+        {
+            Routes = { new Route { Label = "A", Path = _dir, Hotkey = "Ctrl+K" } },
+        };
+        var vm = new SettingsViewModel(cfg, _dialogs);
+        Assert.Contains("Set aside", vm.Routes[0].HotkeyNote);   // live, before OK
+        Assert.False(vm.TryBuildResult());
+        Assert.Contains("Set aside", Assert.Single(_dialogs.Warnings).Message);
+    }
+
+    [Fact]
+    public void BareKeyHotkeyBlocksOkWithAModifierHint()
+    {
+        // "K" parses but WPF can't gesture it — before this check it silently
+        // fell back to the slot default and the typed key did nothing
+        var cfg = new Config
+        {
+            Routes = { new Route { Label = "A", Path = _dir, Hotkey = "K" } },
+        };
+        var vm = new SettingsViewModel(cfg, _dialogs);
+        Assert.Contains("modifier", vm.Routes[0].HotkeyNote);
+        Assert.False(vm.TryBuildResult());
+        Assert.Contains("Ctrl+K", Assert.Single(_dialogs.Warnings).Message);
+    }
+
+    [Fact]
+    public void NumpadAndTopRowDigitsCountAsTheSameHotkey()
+    {
+        var cfg = new Config
+        {
+            Routes =
+            {
+                new Route { Label = "A", Path = _dir },   // fallback Ctrl+1
+                new Route { Label = "B", Path = _dir, Hotkey = "Ctrl+NumPad1" },
+            },
+        };
+        var vm = new SettingsViewModel(cfg, _dialogs);
+        Assert.False(vm.TryBuildResult());
+        Assert.Contains("both answer to Ctrl+1", Assert.Single(_dialogs.Warnings).Message);
+    }
+
+    [Fact]
     public void DuplicateLabelsUnparseableHotkeyAndBadColorBlockOk()
     {
         var cfg = new Config
