@@ -73,10 +73,20 @@ public sealed class LabelMakerViewModel : ObservableObject
         ResetNumberCommand = new RelayCommand(
             () => { if (Selected is { } s) s.NextNumberText = "1"; },
             () => Selected is not null);
-        GenerateCommand = new RelayCommand(Generate, () => Selected is not null);
+        PrintCommand = new RelayCommand(Print, () => Selected is not null);
+        SavePdfCommand = new RelayCommand(SavePdf, () => Selected is not null);
 
         Selected = Clients.FirstOrDefault();   // after the commands the setter pokes
     }
+
+    /// <summary>Sends composed sheets to a printer; returns false when the
+    /// user cancels the print dialog. Supplied by the window (WPF PrintDialog
+    /// + FixedDocument); tests inject a recorder.</summary>
+    internal Func<IReadOnlyList<BoxLabels.Item>, string, bool>? PrintSheets { get; set; }
+
+    /// <summary>The window's print path reports failures through the same
+    /// dialog service the view model uses.</summary>
+    internal IDialogService Dialogs => _dialogs;
 
     private LabelClientVm Hook(LabelClientVm vm)
     {
@@ -93,7 +103,8 @@ public sealed class LabelMakerViewModel : ObservableObject
             if (!Set(ref _selected, value)) return;
             RemoveClientCommand.RaiseCanExecuteChanged();
             ResetNumberCommand.RaiseCanExecuteChanged();
-            GenerateCommand.RaiseCanExecuteChanged();
+            PrintCommand.RaiseCanExecuteChanged();
+            SavePdfCommand.RaiseCanExecuteChanged();
             RefreshPreview();
         }
     }
@@ -108,13 +119,19 @@ public sealed class LabelMakerViewModel : ObservableObject
     private string _preview = "";
     public string Preview { get => _preview; private set => Set(ref _preview, value); }
 
+    /// <summary>The first label of the batch, rendered live by the window's
+    /// preview control; null while the inputs have a problem.</summary>
+    private BoxLabels.Item? _previewItem;
+    public BoxLabels.Item? PreviewItem { get => _previewItem; private set => Set(ref _previewItem, value); }
+
     private string _status = "";
     public string Status { get => _status; private set => Set(ref _status, value); }
 
     public RelayCommand AddClientCommand { get; }
     public RelayCommand RemoveClientCommand { get; }
     public RelayCommand ResetNumberCommand { get; }
-    public RelayCommand GenerateCommand { get; }
+    public RelayCommand PrintCommand { get; }
+    public RelayCommand SavePdfCommand { get; }
 
     /// <summary>Everything wrong with the current inputs, one line each.</summary>
     internal List<string> Problems()
@@ -140,49 +157,81 @@ public sealed class LabelMakerViewModel : ObservableObject
 
     private void RefreshPreview()
     {
-        if (Selected is not { } s) { Preview = ""; return; }
+        if (Selected is not { } s) { Preview = ""; PreviewItem = null; return; }
         var problems = Problems();
-        if (problems.Count > 0) { Preview = "⚠ " + problems[0]; return; }
+        if (problems.Count > 0) { Preview = "⚠ " + problems[0]; PreviewItem = null; return; }
         var created = _today().Date;
         var destroy = created.AddDays(int.Parse(s.DestroyDaysText.Trim()));
-        Preview = $"First label:  {BoxLabels.Compose(s.Id, long.Parse(s.NextNumberText.Trim()))}"
-            + $"   ·   created {created:yyyy-MM-dd}   ·   destroy after {destroy:yyyy-MM-dd}";
+        var start = long.Parse(s.NextNumberText.Trim());
+        var count = int.Parse(LabelCountText.Trim());
+        var sheets = (count + BoxLabels.PerSheet - 1) / BoxLabels.PerSheet;
+        PreviewItem = new BoxLabels.Item(BoxLabels.Compose(s.Id, start), created, destroy);
+        Preview = count == 1
+            ? $"Prints {BoxLabels.Compose(s.Id, start)}   ·   1 sheet"
+            : $"Prints {BoxLabels.Compose(s.Id, start)} – {BoxLabels.Compose(s.Id, start + count - 1)}"
+              + $"   ·   {sheets} sheet{(sheets == 1 ? "" : "s")}";
     }
 
-    internal void Generate()
+    /// <summary>Validated batch for the current inputs, or null after warning.</summary>
+    private (List<BoxLabels.Item> Items, LabelClientVm Client, long Start, int Count)? BuildBatch()
     {
-        if (Selected is not { } s) return;
+        if (Selected is not { } s) return null;
         var problems = Problems();
         if (problems.Count > 0)
         {
             _dialogs.Warn("These need fixing first:\n\n • " + string.Join("\n • ", problems),
                 "FileRouter — label maker");
-            return;
+            return null;
         }
         var start = long.Parse(s.NextNumberText.Trim());
         var count = int.Parse(LabelCountText.Trim());
-        var days = int.Parse(s.DestroyDaysText.Trim());
+        var items = BoxLabels.Batch(s.Id, start, count, _today(),
+            int.Parse(s.DestroyDaysText.Trim()));
+        return (items, s, start, count);
+    }
 
+    /// <summary>The batch went out — advance the counter and save it.</summary>
+    private void Advance(LabelClientVm client, long start, int count, string status)
+    {
+        client.NextNumberText = (start + count).ToString();
+        Persist();
+        Status = status;
+    }
+
+    internal void Print()
+    {
+        if (BuildBatch() is not { } b) return;
+        if (PrintSheets is null)
+        {
+            _dialogs.Warn("Printing isn't available here.", "FileRouter — label maker");
+            return;
+        }
+        if (!PrintSheets(b.Items, $"FileRouter labels {b.Items[0].Code}")) return;   // cancelled
+        var sheets = (b.Count + BoxLabels.PerSheet - 1) / BoxLabels.PerSheet;
+        Advance(b.Client, b.Start, b.Count,
+            $"Sent {b.Count} label{(b.Count == 1 ? "" : "s")} "
+            + $"({sheets} sheet{(sheets == 1 ? "" : "s")}) to the printer.");
+    }
+
+    internal void SavePdf()
+    {
+        if (BuildBatch() is not { } b) return;
         var dest = _dialogs.AskSaveFile("PDF files (*.pdf)|*.pdf",
-            $"labels_{s.Id}_{start:D8}.pdf");
+            $"labels_{b.Client.Id}_{b.Start:D8}.pdf");
         if (dest is null) return;
-
-        var items = BoxLabels.Batch(s.Id, start, count, _today(), days);
         try
         {
-            BoxLabels.RenderPdf(dest, items);
+            BoxLabels.RenderPdf(dest, b.Items);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             _dialogs.Warn("Couldn't save it: " + ex.Message, "FileRouter — label maker");
             return;
         }
-
-        s.NextNumberText = (start + count).ToString();
-        Persist();
-        var sheets = (count + BoxLabels.PerSheet - 1) / BoxLabels.PerSheet;
-        Status = $"Saved {count} label{(count == 1 ? "" : "s")} "
-            + $"({sheets} sheet{(sheets == 1 ? "" : "s")}) — print at 100% scale.";
+        var sheets = (b.Count + BoxLabels.PerSheet - 1) / BoxLabels.PerSheet;
+        Advance(b.Client, b.Start, b.Count,
+            $"Saved {b.Count} label{(b.Count == 1 ? "" : "s")} "
+            + $"({sheets} sheet{(sheets == 1 ? "" : "s")}) — print at 100% scale.");
         try { _openFile(dest); } catch { /* viewer trouble isn't a label problem */ }
     }
 

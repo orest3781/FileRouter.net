@@ -83,11 +83,12 @@ workflow tests, builds, zips, and publishes.
   (find/replace, affixes, case, hand-editable preview, batch undo),
   *Match & merge* (pair PDFs against a roster CSV by name and merge each
   person's ID into the filename, with a side-by-side Triage view for
-  ambiguous matches), and *Box labels* (print-ready PDFs of storage-box
-  labels, ten 4×2" labels per letter sheet with cutting gutters — big
-  client+number code, a Code 39 barcode for hand scanners, created and
-  destruction dates on black bars, per-client retention offsets, and a
-  resettable running number).
+  ambiguous matches), and *Box labels* (storage-box labels, ten 4×2" labels
+  per letter sheet with cutting gutters — big client+number code, a Code 39
+  barcode for hand scanners, created and destruction dates on black bars,
+  per-client retention offsets, and a resettable running number; a live
+  preview shows the exact label, and printing happens in-app at guaranteed
+  100% scale, with PDF export as an alternative).
 
 ## Structure
 

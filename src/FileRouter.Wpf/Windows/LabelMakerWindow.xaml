@@ -1,20 +1,24 @@
 <Window x:Class="FileRouter.Wpf.Windows.LabelMakerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="FileRouter — Box labels" Width="640" Height="480" MinWidth="560" MinHeight="420"
+        xmlns:views="clr-namespace:FileRouter.Wpf.Views"
+        Title="FileRouter — Box labels" Width="680" Height="560" MinWidth="600" MinHeight="500"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         Style="{StaticResource {x:Type Window}}">
     <DockPanel Margin="14">
-        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right"
-                    Margin="0,10,0,0">
-            <Button Content="Create PDF…" Command="{Binding GenerateCommand}"
-                    Style="{StaticResource PrimaryButton}" Width="120" Margin="0,0,8,0" />
-            <Button Content="Close" Width="96" IsCancel="True" />
-        </StackPanel>
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+            <Button DockPanel.Dock="Right" Content="Close" Width="96" IsCancel="True" />
+            <Button DockPanel.Dock="Right" Content="Save PDF…" Command="{Binding SavePdfCommand}"
+                    Width="110" Margin="0,0,8,0" />
+            <Button DockPanel.Dock="Right" Content="Print…" Command="{Binding PrintCommand}"
+                    Style="{StaticResource PrimaryButton}" Width="110" Margin="0,0,8,0" />
+            <TextBlock Text="{Binding Status}" Style="{StaticResource StatusText}"
+                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+        </DockPanel>
 
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="180" />
+                <ColumnDefinition Width="170" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
@@ -33,7 +37,13 @@
                              AutomationProperties.Name="Clients">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding Id}" />
+                                <DockPanel>
+                                    <!-- the next number, at a glance -->
+                                    <TextBlock DockPanel.Dock="Right" Text="{Binding NextNumberText}"
+                                               Style="{StaticResource SubtleText}" FontSize="11"
+                                               VerticalAlignment="Center" Margin="8,0,0,0" />
+                                    <TextBlock Text="{Binding Id}" TextTrimming="CharacterEllipsis" />
+                                </DockPanel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
@@ -103,7 +113,7 @@
                                       RelativeSource={RelativeSource AncestorType=Window}}" />
                 </Grid>
 
-                <Grid Margin="0,4,0,0">
+                <Grid Margin="0,0,0,4">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="150" />
                         <ColumnDefinition Width="140" />
@@ -121,11 +131,31 @@
                 </Grid>
             </StackPanel>
 
-            <!-- live preview of the first label + result line -->
+            <!-- the first label, rendered exactly as it will print -->
             <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,12,0,0">
-                <TextBlock Text="{Binding Preview}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                <TextBlock Text="{Binding Status}" Style="{StaticResource StatusText}"
-                           Margin="0,6,0,0" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding Preview}" FontWeight="SemiBold" TextWrapping="Wrap"
+                           Margin="0,0,0,6" />
+                <Border BorderBrush="{DynamicResource Theme.Border}" BorderThickness="1"
+                        CornerRadius="4" Padding="10"
+                        Background="{DynamicResource Theme.Surface}">
+                    <Grid Height="160">
+                        <views:LabelPreviewControl Item="{Binding PreviewItem}"
+                                                   AutomationProperties.Name="Label preview" />
+                        <TextBlock Text="Fix the inputs above to see the label."
+                                   HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource SubtleText}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding PreviewItem}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
+                </Border>
             </StackPanel>
         </Grid>
     </DockPanel>

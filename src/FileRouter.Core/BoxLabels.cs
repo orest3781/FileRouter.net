@@ -134,20 +134,85 @@ public static class BoxLabels
         return items;
     }
 
-    // Sheet geometry (inches): 2 columns × 5 rows of 4×2 labels with a
-    // cutting gutter between every pair — these are cut by hand and slipped
-    // into box pouches, so no two labels ever share an edge.
-    private const double LabelW = 4.0, LabelH = 2.0;
-    private const double MarginLeft = 0.15625, MarginTop = 0.4;
-    private const double PitchX = 4.1875, PitchY = 2.125;   // 0.1875 / 0.125 gutters
+    // ------------------------------------------------- shared sheet layout
+    // Sheet geometry: 2 columns × 5 rows of 4×2" labels with a cutting gutter
+    // between every pair — these are cut by hand and slipped into box
+    // pouches, so no two labels ever share an edge. All lengths in POINTS
+    // (1/72"); every renderer (PDF export, in-app preview, in-app printing)
+    // replays the same drawing, so what you see is exactly what prints.
+    public const double PageWidthPt = 612, PageHeightPt = 792;      // US letter
+    public const double LabelWidthPt = 288, LabelHeightPt = 144;    // 4 × 2 in
+    private const double MarginLeft = 0.15625, MarginTop = 0.4;     // inches
+    private const double PitchX = 4.1875, PitchY = 2.125;           // 0.1875 / 0.125 gutters
+    private const double BarH = 22;   // both date bars, same height
 
+    public const string SheetNote =
+        "Print at 100% scale (no “fit to page”)  ·  10 labels, 4 × 2 in  ·  cut along the gray guides";
+    public const double SheetNoteY = 11.5, SheetNoteSize = 6.5;
+
+    /// <summary>A black filled rectangle (date bars and barcode bars).</summary>
+    public sealed record BarRect(double X, double Y, double W, double H);
+
+    /// <summary>Bold text centered in its box. Mono = Consolas (the code
+    /// line); otherwise Segoe UI. White text sits on a black bar.</summary>
+    public sealed record TextRun(string Text, double X, double Y, double W, double H,
+        double Size, bool Mono, bool White);
+
+    /// <summary>Everything one label draws, at origin (0,0), in points.</summary>
+    public sealed record LabelDrawing(
+        IReadOnlyList<BarRect> Bars, IReadOnlyList<TextRun> Texts, BarRect CutGuide);
+
+    /// <summary>Top-left corner of a sheet slot (0-9), in points.</summary>
+    public static (double X, double Y) SlotOrigin(int slot) =>
+        (72 * (MarginLeft + slot % 2 * PitchX), 72 * (MarginTop + slot / 2 * PitchY));
+
+    /// <summary>26pt when it fits, scaled down for long client ids so the
+    /// code line never crowds the label edges. Pure math — Consolas is
+    /// monospaced (advance ≈ 0.6 em), so every renderer agrees.</summary>
+    public static double CodeFontSize(string display) =>
+        Math.Min(26.0, (LabelWidthPt - 20) / (display.Length * 0.6));
+
+    /// <summary>Lay out one label: matching black date bars top and bottom
+    /// (readable across a storage room), the grouped code line, and the
+    /// Code 39 barcode with clear air above it so an angled scan sweep can't
+    /// catch the digit strokes.</summary>
+    public static LabelDrawing ComposeDrawing(Item item)
+    {
+        const double w = LabelWidthPt, h = LabelHeightPt;
+        var bars = new List<BarRect> { new(0, 0, w, BarH), new(0, h - BarH, w, BarH) };
+        var display = DisplayCode(item.Code);
+        var texts = new List<TextRun>
+        {
+            new($"CREATED {item.Created:yyyy-MM-dd}", 0, 0, w, BarH, 12, Mono: false, White: true),
+            new(display, 0, BarH + 2, w, 34, CodeFontSize(display), Mono: true, White: false),
+            new($"DESTROY AFTER {item.Destroy:yyyy-MM-dd}", 0, h - BarH, w, BarH, 12,
+                Mono: false, White: true),
+        };
+
+        // 3:1 wide:narrow ratio; the bar field spans the label minus quiet
+        // zones (≥10 narrow units each side keeps hand scanners happy). The
+        // 0.18" side insets keep long client ids above ~12 mil bars.
+        var elements = Code39.Encode(item.Code);
+        var units = elements.Sum(e => e.Wide ? 3 : 1) + 20;
+        var printable = 72 * (4.0 - 0.36);
+        var narrow = printable / units;
+        var cursor = (w - printable) / 2 + narrow * 10;
+        foreach (var e in elements)
+        {
+            var barW = narrow * (e.Wide ? 3 : 1);
+            if (e.Bar) bars.Add(new BarRect(cursor, 66, barW, 42));
+            cursor += barW;
+        }
+
+        return new LabelDrawing(bars, texts, new BarRect(0, 0, w, h));
+    }
+
+    // ------------------------------------------------------------ PDF export
     /// <summary>Write the print-ready PDF (US letter, print at 100% scale).</summary>
     public static void RenderPdf(string path, IReadOnlyList<Item> items)
     {
         if (items.Count == 0) throw new ArgumentException("Nothing to print.");
         using var doc = new PdfDocument();
-        // one size for both date bars — readable across a storage room
-        var barFont = new XFont("Segoe UI", 12, XFontStyleEx.Bold);
         var cutLine = new XPen(XColor.FromArgb(210, 210, 210), 0.4);
 
         for (var i = 0; i < items.Count; i++)
@@ -155,10 +220,17 @@ public static class BoxLabels
             if (i % PerSheet == 0) AddPage(doc);
             var page = doc.Pages[doc.PageCount - 1];
             using var gfx = XGraphics.FromPdfPage(page);
-            var slot = i % PerSheet;
-            var x = XUnit.FromInch(MarginLeft + slot % 2 * PitchX).Point;
-            var y = XUnit.FromInch(MarginTop + slot / 2 * PitchY).Point;
-            DrawLabel(gfx, items[i], x, y, barFont, cutLine);
+            var (x, y) = SlotOrigin(i % PerSheet);
+            var d = ComposeDrawing(items[i]);
+            foreach (var b in d.Bars)
+                gfx.DrawRectangle(XBrushes.Black, x + b.X, y + b.Y, b.W, b.H);
+            foreach (var t in d.Texts)
+                gfx.DrawString(t.Text,
+                    new XFont(t.Mono ? "Consolas" : "Segoe UI", t.Size, XFontStyleEx.Bold),
+                    t.White ? XBrushes.White : XBrushes.Black,
+                    new XRect(x + t.X, y + t.Y, t.W, t.H), XStringFormats.Center);
+            gfx.DrawRectangle(cutLine, x + d.CutGuide.X, y + d.CutGuide.Y,
+                d.CutGuide.W, d.CutGuide.H);
         }
         doc.Save(path);
     }
@@ -166,74 +238,13 @@ public static class BoxLabels
     private static void AddPage(PdfDocument doc)
     {
         var page = doc.AddPage();
-        page.Width = XUnit.FromInch(8.5);
-        page.Height = XUnit.FromInch(11);
+        page.Width = XUnit.FromPoint(PageWidthPt);
+        page.Height = XUnit.FromPoint(PageHeightPt);
         // the top margin is outside the labels — spend it on the one
         // instruction that prevents a whole misprinted sheet
         using var gfx = XGraphics.FromPdfPage(page);
-        gfx.DrawString("Print at 100% scale (no “fit to page”)  ·  10 labels, 4 × 2 in  ·  cut along the gray guides",
-            new XFont("Segoe UI", 6.5), new XSolidBrush(XColor.FromArgb(150, 150, 150)),
-            new XRect(0, XUnit.FromInch(0.16).Point, page.Width.Point, 10),
-            XStringFormats.Center);
-    }
-
-    /// <summary>26pt when it fits, stepped down for long client ids — the
-    /// code line must never crowd the label edges or clip.</summary>
-    private static XFont FitCodeFont(XGraphics gfx, string display, double maxWidth)
-    {
-        for (var size = 26.0; size > 10; size -= 1)
-        {
-            var font = new XFont("Consolas", size, XFontStyleEx.Bold);
-            if (gfx.MeasureString(display, font).Width <= maxWidth) return font;
-        }
-        return new XFont("Consolas", 10, XFontStyleEx.Bold);
-    }
-
-    private const double BarH = 22;   // both date bars, same height
-
-    private static void DrawLabel(XGraphics gfx, Item item, double x, double y,
-        XFont barFont, XPen cutLine)
-    {
-        var w = XUnit.FromInch(LabelW).Point;
-        var h = XUnit.FromInch(LabelH).Point;
-
-        // the dates ride matching full-width black bars — visible across a
-        // storage room, and the destruction date can't be mistaken for decoration
-        gfx.DrawRectangle(XBrushes.Black, x, y, w, BarH);
-        gfx.DrawString($"CREATED {item.Created:yyyy-MM-dd}", barFont, XBrushes.White,
-            new XRect(x, y, w, BarH), XStringFormats.Center);
-
-        var display = DisplayCode(item.Code);
-        gfx.DrawString(display, FitCodeFont(gfx, display, w - 20), XBrushes.Black,
-            new XRect(x, y + BarH + 2, w, 34), XStringFormats.Center);
-        // clear air between the digit strokes and the bars — an angled scan
-        // sweep must never catch both
-        DrawBarcode(gfx, item.Code, x, y + 66, w, height: 42);
-
-        gfx.DrawRectangle(XBrushes.Black, x, y + h - BarH, w, BarH);
-        gfx.DrawString($"DESTROY AFTER {item.Destroy:yyyy-MM-dd}", barFont, XBrushes.White,
-            new XRect(x, y + h - BarH, w, BarH), XStringFormats.Center);
-
-        // the cut guide — every label is scissored out along this line
-        gfx.DrawRectangle(cutLine, x, y, w, h);
-    }
-
-    private static void DrawBarcode(XGraphics gfx, string code, double x, double y,
-        double labelW, double height)
-    {
-        var elements = Code39.Encode(code);
-        // 3:1 wide:narrow ratio; the bar field spans the label minus quiet
-        // zones (≥10 narrow units each side keeps hand scanners happy). The
-        // 0.18" side insets keep long client ids above ~12 mil bars.
-        var units = elements.Sum(e => e.Wide ? 3 : 1) + 20;
-        var printable = XUnit.FromInch(LabelW - 0.36).Point;
-        var narrow = printable / units;
-        var cursor = x + (labelW - printable) / 2 + narrow * 10;
-        foreach (var e in elements)
-        {
-            var wBar = narrow * (e.Wide ? 3 : 1);
-            if (e.Bar) gfx.DrawRectangle(XBrushes.Black, cursor, y, wBar, height);
-            cursor += wBar;
-        }
+        gfx.DrawString(SheetNote, new XFont("Segoe UI", SheetNoteSize),
+            new XSolidBrush(XColor.FromArgb(150, 150, 150)),
+            new XRect(0, SheetNoteY, PageWidthPt, 10), XStringFormats.Center);
     }
 }

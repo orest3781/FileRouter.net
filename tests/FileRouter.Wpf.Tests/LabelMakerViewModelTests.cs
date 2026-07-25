@@ -34,13 +34,58 @@ public class LabelMakerViewModelTests : IDisposable
         var vm = Vm(cfg);
         Assert.Equal(2, vm.Clients.Count);
         Assert.Equal("ABCD", vm.Selected!.Id);
-        Assert.Contains("ABCD00000042", vm.Preview);
-        Assert.Contains("created 2026-07-25", vm.Preview);
-        Assert.Contains("destroy after 2026-08-24", vm.Preview);
+        Assert.Contains("ABCD00000042 – ABCD00000051", vm.Preview);   // default count 10
+        Assert.Contains("1 sheet", vm.Preview);
+
+        // the live preview card renders the first label of the batch
+        Assert.Equal("ABCD00000042", vm.PreviewItem!.Code);
+        Assert.Equal(Today, vm.PreviewItem.Created);
+        Assert.Equal(Today.AddDays(30), vm.PreviewItem.Destroy);
     }
 
     [Fact]
-    public void GenerateWritesThePdfAdvancesTheNumberAndPersists()
+    public void PrintSendsTheSheetsAndAdvancesTheNumber()
+    {
+        var cfg = new Config
+        {
+            LabelClients = { new LabelClient { Id = "ABCD", DestroyDays = 30, NextNumber = 5 } },
+        };
+        var vm = Vm(cfg);
+        IReadOnlyList<BoxLabels.Item>? sent = null;
+        string? job = null;
+        vm.PrintSheets = (items, name) => { sent = items; job = name; return true; };
+
+        vm.Print();
+
+        Assert.Equal(10, sent!.Count);
+        Assert.Equal("ABCD00000005", sent[0].Code);
+        Assert.Contains("ABCD00000005", job);
+        Assert.Equal("15", vm.Selected!.NextNumberText);        // 10 labels consumed
+        Assert.Equal(15, cfg.LabelClients[0].NextNumber);       // written back...
+        Assert.True(_saved);                                    // ...and saved
+        Assert.Contains("printer", vm.Status);
+        Assert.Empty(_dialogs.Warnings);
+    }
+
+    [Fact]
+    public void CancellingThePrintDialogChangesNothing()
+    {
+        var cfg = new Config
+        {
+            LabelClients = { new LabelClient { Id = "ABCD", NextNumber = 5 } },
+        };
+        var vm = Vm(cfg);
+        vm.PrintSheets = (_, _) => false;   // user backed out
+
+        vm.Print();
+
+        Assert.Equal("5", vm.Selected!.NextNumberText);
+        Assert.False(_saved);
+        Assert.Equal("", vm.Status);
+    }
+
+    [Fact]
+    public void SavePdfWritesTheFileAdvancesTheNumberAndPersists()
     {
         var cfg = new Config
         {
@@ -50,12 +95,12 @@ public class LabelMakerViewModelTests : IDisposable
         var dest = Path.Combine(_dir, "labels.pdf");
         _dialogs.NextSaveFile = dest;
 
-        vm.Generate();
+        vm.SavePdf();
 
         Assert.True(File.Exists(dest));
-        Assert.Equal("15", vm.Selected!.NextNumberText);        // 10 labels consumed
-        Assert.Equal(15, cfg.LabelClients[0].NextNumber);       // written back...
-        Assert.True(_saved);                                    // ...and saved
+        Assert.Equal("15", vm.Selected!.NextNumberText);
+        Assert.Equal(15, cfg.LabelClients[0].NextNumber);
+        Assert.True(_saved);
         Assert.Equal(dest, Assert.Single(_opened));             // handed to the viewer
         Assert.Contains("1 sheet", vm.Status);
         Assert.Empty(_dialogs.Warnings);
@@ -71,7 +116,7 @@ public class LabelMakerViewModelTests : IDisposable
         var vm = Vm(cfg);
         _dialogs.NextSaveFile = null;   // user pressed Cancel
 
-        vm.Generate();
+        vm.SavePdf();
 
         Assert.Equal("5", vm.Selected!.NextNumberText);
         Assert.False(_saved);
@@ -86,13 +131,24 @@ public class LabelMakerViewModelTests : IDisposable
         vm.LabelCountText = "0";
         _dialogs.NextSaveFile = Path.Combine(_dir, "never.pdf");
 
-        vm.Generate();
+        vm.SavePdf();
 
         var msg = Assert.Single(_dialogs.Warnings).Message;
         Assert.Contains("2 to 8", msg);          // bad client id
         Assert.Contains("1 to 1000", msg);       // bad count
         Assert.False(File.Exists(Path.Combine(_dir, "never.pdf")));
         Assert.StartsWith("⚠", vm.Preview);      // the preview says so live too
+        Assert.Null(vm.PreviewItem);             // and the card goes blank
+    }
+
+    [Fact]
+    public void PrintWithoutAPrinterHookWarns()
+    {
+        var cfg = new Config { LabelClients = { new LabelClient { Id = "ABCD" } } };
+        var vm = Vm(cfg);
+        vm.Print();   // PrintSheets never wired
+        Assert.Contains("Printing", Assert.Single(_dialogs.Warnings).Message);
+        Assert.False(_saved);
     }
 
     [Fact]
@@ -107,7 +163,7 @@ public class LabelMakerViewModelTests : IDisposable
             },
         };
         var vm = Vm(cfg);
-        vm.Generate();
+        vm.SavePdf();
         Assert.Contains("both called", Assert.Single(_dialogs.Warnings).Message);
     }
 
@@ -130,7 +186,8 @@ public class LabelMakerViewModelTests : IDisposable
         var cfg = new Config();
         var vm = Vm(cfg);
         Assert.Null(vm.Selected);
-        Assert.False(vm.GenerateCommand.CanExecute(null));
+        Assert.False(vm.PrintCommand.CanExecute(null));
+        Assert.False(vm.SavePdfCommand.CanExecute(null));
 
         vm.AddClientCommand.Execute(null);
         vm.Selected!.Id = "abcd";                 // typed lowercase...
@@ -156,7 +213,7 @@ public class LabelMakerViewModelTests : IDisposable
         var vm = Vm(cfg);
         _dialogs.NextSaveFile = Path.Combine(_dir, "never.pdf");
 
-        vm.Generate();   // 10 labels would pass 99,999,999
+        vm.SavePdf();   // 10 labels would pass 99,999,999
 
         Assert.Contains("99999999", Assert.Single(_dialogs.Warnings).Message);
         Assert.False(File.Exists(Path.Combine(_dir, "never.pdf")));
