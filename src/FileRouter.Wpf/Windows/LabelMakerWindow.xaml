@@ -116,7 +116,8 @@
                 <Grid Margin="0,0,0,4">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="150" />
-                        <ColumnDefinition Width="140" />
+                        <ColumnDefinition Width="60" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="Labels to print:" VerticalAlignment="Center" Margin="0,0,10,0" />
@@ -125,9 +126,16 @@
                                     RelativeSource={RelativeSource AncestorType=Window},
                                     UpdateSourceTrigger=PropertyChanged}"
                              AutomationProperties.Name="Labels to print" />
-                    <TextBlock Grid.Column="2" Text="10 per sheet · 4×2 in · gutters for cutting"
+                    <!-- whole-sheet presets: one click for the common runs -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0">
+                        <Button Content="10" Tag="10" Click="OnCountPreset" MinWidth="34" />
+                        <Button Content="20" Tag="20" Click="OnCountPreset" MinWidth="34" Margin="4,0,0,0" />
+                        <Button Content="30" Tag="30" Click="OnCountPreset" MinWidth="34" Margin="4,0,0,0" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="3" Text="10 per sheet · 4×2 in"
                                Style="{StaticResource SubtleText}" FontSize="11"
-                               VerticalAlignment="Center" Margin="8,0,0,0" />
+                               VerticalAlignment="Center" Margin="8,0,0,0"
+                               TextTrimming="CharacterEllipsis" />
                 </Grid>
             </StackPanel>
 

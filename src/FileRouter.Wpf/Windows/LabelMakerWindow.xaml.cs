@@ -18,6 +18,12 @@ public partial class LabelMakerWindow : Window
         Closing += (_, _) => vm.Persist();
     }
 
+    private void OnCountPreset(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Button { Tag: string n })
+            ((LabelMakerViewModel)DataContext).LabelCountText = n;
+    }
+
     /// <summary>In-app printing: the batch becomes a US-letter FixedDocument
     /// (same layout as the PDF and the preview card), shown in a print
     /// preview first — printing happens from there. WPF maps 96 DIPs to one
