@@ -48,22 +48,43 @@
             <Rectangle Height="1" Fill="{DynamicResource Theme.Border}" Margin="0,14,0,0" />
         </StackPanel>
 
-        <!-- the inbox: one big number over the Start button -->
-        <TextBlock Text="{Binding BigCount}" FontSize="76" FontWeight="Bold"
-                   HorizontalAlignment="Center" Margin="0,14,0,0"
-                   AutomationProperties.Name="{Binding CountLine}">
-            <TextBlock.Style>
-                <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding CountAlertOn}" Value="True">
-                            <Setter Property="Foreground" Value="{DynamicResource Theme.Danger}" />
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </TextBlock.Style>
-        </TextBlock>
-        <TextBlock Text="{Binding CountCaption}" Style="{StaticResource SubtleText}"
-                   HorizontalAlignment="Center" Margin="0,-6,0,0" />
+        <!-- the inbox: one big number over the Start button. A real button —
+             clicking it opens the inbox folder (keyboard/screen-reader too) -->
+        <Button Command="{Binding OpenInboxCommand}"
+                HorizontalAlignment="Center" Margin="0,14,0,0"
+                Cursor="Hand" ToolTip="Open the inbox folder"
+                AutomationProperties.Name="{Binding CountLine}">
+            <Button.Template>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bg" Background="Transparent"
+                            CornerRadius="6" Padding="18,0,18,4">
+                        <ContentPresenter />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bg" Property="Background"
+                                    Value="{DynamicResource Theme.SurfaceHover}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Button.Template>
+            <StackPanel>
+                <TextBlock Text="{Binding BigCount}" FontSize="76" FontWeight="Bold"
+                           HorizontalAlignment="Center">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CountAlertOn}" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource Theme.Danger}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+                <TextBlock Text="{Binding CountCaption}" Style="{StaticResource SubtleText}"
+                           HorizontalAlignment="Center" Margin="0,-6,0,0" />
+            </StackPanel>
+        </Button>
         <TextBlock Text="{Binding DetailLine}" Style="{StaticResource SubtleText}"
                    HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"
                    Margin="0,4,0,0" />

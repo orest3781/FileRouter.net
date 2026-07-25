@@ -63,6 +63,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         StartCommand = new RelayCommand(StartProcessing, () => StartEnabled);
         RescanCommand = new RelayCommand(Rescan);
         OpenDeferredCommand = new RelayCommand(() => OpenFolder(_cfg.Deferred));
+        OpenInboxCommand = new RelayCommand(() => OpenFolder(_cfg.Inbox));
         RouteCommand = new AsyncRelayCommand<int>(OnRouteAsync);
         SkipCommand = new AsyncRelayCommand(OnSkipAsync);
         UndoCommand = new AsyncRelayCommand(OnUndoAsync, () => _session.CanUndo);
@@ -131,6 +132,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public RelayCommand StartCommand { get; }
     public RelayCommand RescanCommand { get; }
     public RelayCommand OpenDeferredCommand { get; }
+    public RelayCommand OpenInboxCommand { get; }
 
     /// <summary>Called once by the window after the viewer init attempt:
     /// start watching and take the first scan.</summary>
