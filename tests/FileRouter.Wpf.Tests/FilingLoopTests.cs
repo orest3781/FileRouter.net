@@ -309,6 +309,26 @@ public class FilingLoopTests
     }
 
     [Fact]
+    public void DownArrowTakesTheWholeTopSuggestion()
+    {
+        var fx = new ShellFixture();
+        using var _ = fx;
+        fx.WriteNamesFile("SMITH JOHN");
+        fx.AddInboxFile("20240115--111111.pdf");
+        fx.Shell.Initialize();
+        fx.Shell.StartProcessing();
+
+        Assert.False(fx.Shell.AcceptTopSuggestion());   // empty box suggests nothing
+
+        fx.Shell.TypedName = "SM";
+        Assert.True(fx.Shell.AcceptTopSuggestion());
+        Assert.Equal("SMITH JOHN", fx.Shell.TypedName);
+
+        // the exact match is excluded from suggestions — a second ↓ is inert
+        Assert.False(fx.Shell.AcceptTopSuggestion());
+    }
+
+    [Fact]
     public void TabCompletesWordAtATimeWithAWordSeparatorToo()
     {
         // with word_separator "-", history names look like SMITH-JOHN and a

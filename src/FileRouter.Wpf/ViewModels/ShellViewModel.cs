@@ -808,6 +808,15 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         HasSuggestions = false;
     }
 
+    /// <summary>Down arrow: take the WHOLE top suggestion in one keystroke
+    /// (Tab stays word-at-a-time; Enter stays free to commit).</summary>
+    internal bool AcceptTopSuggestion()
+    {
+        if (Suggestions.Count == 0) return false;
+        TypedName = Suggestions[0];
+        return true;
+    }
+
     /// <summary>Tab: complete the top suggestion one word at a time, honoring
     /// the configured word separator as the boundary (Python-parity muscle
     /// memory; Enter stays free to commit).</summary>

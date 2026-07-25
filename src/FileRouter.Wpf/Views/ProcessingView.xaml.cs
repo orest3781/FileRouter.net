@@ -50,6 +50,13 @@ public partial class ProcessingView : UserControl
                     e.Handled = true;
                 }
                 break;
+            case Key.Down:
+                if (_shell.AcceptTopSuggestion())
+                {
+                    NameBox.CaretIndex = NameBox.Text.Length;
+                    e.Handled = true;
+                }
+                break;
             case Key.Enter:
                 _shell.OnEnter();
                 e.Handled = true;
