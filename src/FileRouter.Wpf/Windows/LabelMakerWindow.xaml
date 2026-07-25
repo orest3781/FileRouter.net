@@ -113,6 +113,8 @@
                              Text="{Binding NextNumberText, UpdateSourceTrigger=PropertyChanged}"
                              AutomationProperties.Name="Next label number" />
                     <Button Grid.Column="2" Content="Reset to 1" Margin="8,0,0,0"
+                            Style="{StaticResource ChipButton}" VerticalAlignment="Center"
+                            ToolTip="Start this client's numbering over at 00000001"
                             Command="{Binding DataContext.ResetNumberCommand,
                                       RelativeSource={RelativeSource AncestorType=Window}}" />
                 </Grid>
