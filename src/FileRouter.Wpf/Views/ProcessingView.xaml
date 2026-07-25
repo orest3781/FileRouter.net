@@ -61,11 +61,22 @@
                             IsEnabled="{Binding Enabled}"
                             ToolTip="{Binding DisabledReason}"
                             ToolTipService.ShowOnDisabled="True"
+                            HorizontalContentAlignment="Stretch"
                             Background="{Binding Back, Converter={StaticResource RgbToBrush}}"
                             Foreground="{Binding Fore, Converter={StaticResource RgbToBrush}}"
                             AutomationProperties.Name="{Binding Label}">
-                        <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis"
-                                   Foreground="{Binding Fore, Converter={StaticResource RgbToBrush}}" />
+                        <Grid>
+                            <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Foreground="{Binding Fore, Converter={StaticResource RgbToBrush}}" />
+                            <!-- the one button Enter presses right now -->
+                            <TextBlock Text="⏎" FontWeight="Bold" ToolTip="Enter files here"
+                                       HorizontalAlignment="Right" VerticalAlignment="Center"
+                                       Margin="0,0,4,0"
+                                       Visibility="{Binding IsEnterTarget,
+                                                    Converter={StaticResource BoolToVis}}"
+                                       Foreground="{Binding Fore, Converter={StaticResource RgbToBrush}}" />
+                        </Grid>
                     </Button>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>

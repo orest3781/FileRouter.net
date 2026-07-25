@@ -560,6 +560,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                 // never on the UI thread
                 var outcome = await _scheduler.Run(() => _session.CommitCurrent(typed, route));
                 _lastRoute = index;
+                MarkEnterRoute();
                 if (outcome.Vanished)
                 {
                     StatusLine = "That file disappeared from the inbox — logged and moved on.";
@@ -637,6 +638,15 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             await LoadCurrentAsync();
         }
         finally { _busy = false; }
+    }
+
+    /// <summary>Show the ⏎ badge on the one button Enter would press now —
+    /// the answer to "which button is Enter?" at a glance.</summary>
+    private void MarkEnterRoute()
+    {
+        var want = _cfg.EnterCommits ? _lastRoute : null;
+        for (var i = 0; i < Routes.Count; i++)
+            Routes[i].IsEnterTarget = i == want;
     }
 
     /// <summary>Enter files to the last-used route (when enabled in config).</summary>

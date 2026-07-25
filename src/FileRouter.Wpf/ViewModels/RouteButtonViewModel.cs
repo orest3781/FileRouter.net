@@ -1,5 +1,6 @@
 using System.Windows.Input;
 using FileRouter.Core;
+using FileRouter.Wpf.Mvvm;
 using FileRouter.Wpf.Services;
 using FileRouter.Wpf.Theme;
 
@@ -8,8 +9,13 @@ namespace FileRouter.Wpf.ViewModels;
 /// <summary>One destination button on the Processing screen: label with
 /// suffix + hotkey, config color with a WCAG-picked foreground, disabled with
 /// a readable reason when the destination is unusable.</summary>
-public sealed class RouteButtonViewModel
+public sealed class RouteButtonViewModel : ObservableObject
 {
+    /// <summary>True on the one button Enter would press right now (the
+    /// last-used route, when enter_commits is on) — shown as a ⏎ badge.</summary>
+    private bool _isEnterTarget;
+    public bool IsEnterTarget { get => _isEnterTarget; internal set => Set(ref _isEnterTarget, value); }
+
     public int Index { get; }
     public string Label { get; }
     public bool Enabled { get; }

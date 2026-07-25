@@ -309,6 +309,45 @@ public class FilingLoopTests
     }
 
     [Fact]
+    public async Task EnterBadgeSitsOnTheLastUsedRoute()
+    {
+        var fx = new ShellFixture(cfg =>
+        {
+            cfg.EnterCommits = true;
+            var second = Path.Combine(cfg.Inbox, "..", "second");
+            Directory.CreateDirectory(second);
+            cfg.Routes.Add(new Route { Label = "Second", Path = second });
+        });
+        using var _ = fx;
+        fx.AddInboxFile();
+        fx.AddInboxFile();
+        fx.Shell.Initialize();
+        fx.Shell.StartProcessing();
+
+        Assert.All(fx.Shell.Routes, r => Assert.False(r.IsEnterTarget));   // nothing used yet
+
+        fx.Shell.TypedName = "SMITH JOHN";
+        await fx.Shell.OnRouteAsync(1);
+        Assert.False(fx.Shell.Routes[0].IsEnterTarget);
+        Assert.True(fx.Shell.Routes[1].IsEnterTarget);   // ⏎ badge follows the press
+    }
+
+    [Fact]
+    public async Task NoEnterBadgeWhenEnterCommitsIsOff()
+    {
+        var fx = new ShellFixture(cfg => cfg.EnterCommits = false);
+        using var _ = fx;
+        fx.AddInboxFile();
+        fx.AddInboxFile();
+        fx.Shell.Initialize();
+        fx.Shell.StartProcessing();
+
+        fx.Shell.TypedName = "WALKER SUE";
+        await fx.Shell.OnRouteAsync(0);
+        Assert.All(fx.Shell.Routes, r => Assert.False(r.IsEnterTarget));   // Enter is inert
+    }
+
+    [Fact]
     public void DownArrowTakesTheWholeTopSuggestion()
     {
         var fx = new ShellFixture();
