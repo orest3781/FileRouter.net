@@ -2,7 +2,8 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <StackPanel>
-        <TextBlock Text="{Binding ProgressLine}" Style="{StaticResource HeadlineText}" />
+        <TextBlock Text="{Binding ProgressLine}" Style="{StaticResource HeadlineText}"
+                   Typography.NumeralAlignment="Tabular" />
         <TextBlock Text="{Binding CurrentFilename}" Style="{StaticResource SubtleText}"
                    TextWrapping="Wrap" Margin="0,4,0,0" />
 
@@ -25,11 +26,20 @@
         </TextBox>
         <Popup x:Name="SuggestPopup" PlacementTarget="{Binding ElementName=NameBox}"
                Placement="Bottom" StaysOpen="True" AllowsTransparency="True"
+               PopupAnimation="Fade"
                IsOpen="{Binding HasSuggestions, Mode=OneWay}"
                Width="{Binding ActualWidth, ElementName=NameBox}">
-            <ListBox x:Name="SuggestList" ItemsSource="{Binding Suggestions}"
-                     Focusable="False" MaxHeight="220"
-                     SelectionChanged="SuggestList_SelectionChanged" />
+            <!-- a floating card: raised surface, rounded, soft shadow (the
+                 margin is the shadow's room inside the popup) -->
+            <Border Margin="0,2,8,10" CornerRadius="8"
+                    Background="{DynamicResource Theme.SurfaceRaised}"
+                    BorderBrush="{DynamicResource Theme.Border}" BorderThickness="1"
+                    Effect="{StaticResource Elevation1}">
+                <ListBox x:Name="SuggestList" ItemsSource="{Binding Suggestions}"
+                         Focusable="False" MaxHeight="220" Margin="3"
+                         Background="Transparent" BorderThickness="0"
+                         SelectionChanged="SuggestList_SelectionChanged" />
+            </Border>
         </Popup>
         <TextBlock Style="{StaticResource SubtleText}" FontSize="11" Margin="0,3,0,0"
                    Text="Tab completes a word · ↓ takes the whole match · blank files without renaming" />
@@ -96,6 +106,7 @@
              (green when the route has none; amber for set-aside). Sits at the
              bottom so the buttons above never shift mid-click. -->
         <Border CornerRadius="8" Padding="12,9" Margin="0,12,0,0"
+                Effect="{StaticResource Elevation1}"
                 Background="{Binding LastActionBack, Converter={StaticResource RgbToBrush}}"
                 Visibility="{Binding LastActionVisible, Converter={StaticResource BoolToVis}}">
             <Border.Style>

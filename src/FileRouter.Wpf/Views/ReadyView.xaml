@@ -23,13 +23,30 @@
                                 MinHeight="78" Margin="0,0,6,6" Padding="12,8"
                                 HorizontalContentAlignment="Left"
                                 VerticalContentAlignment="Top"
-                                BorderThickness="0" Cursor="Hand">
+                                BorderThickness="0" Cursor="Hand"
+                                Effect="{StaticResource Elevation1}">
+                            <Button.Triggers>
+                                <!-- tiles fade in as folders light up -->
+                                <EventTrigger RoutedEvent="Loaded">
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                             From="0" To="1" Duration="0:0:0.15" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                            </Button.Triggers>
                             <StackPanel>
-                                <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="SemiBold"
-                                           TextTrimming="CharacterEllipsis"
-                                           Foreground="{Binding Fore, Converter={StaticResource RgbToBrush}}" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource Icon}" Text="&#xE8B7;"
+                                               FontSize="12" Margin="0,0,6,0"
+                                               Foreground="{Binding Fore, Converter={StaticResource RgbToBrush}}" />
+                                    <TextBlock Text="{Binding Label}" FontSize="12" FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis"
+                                               Foreground="{Binding Fore, Converter={StaticResource RgbToBrush}}" />
+                                </StackPanel>
                                 <TextBlock Text="{Binding CountText}" FontSize="27" FontWeight="Bold"
-                                           Margin="0,2,0,0"
+                                           Margin="0,2,0,0" Typography.NumeralAlignment="Tabular"
                                            Foreground="{Binding Fore, Converter={StaticResource RgbToBrush}}" />
                                 <!-- where the alerting file sits, when it's in
                                      a subfolder of the watched folder -->
@@ -69,10 +86,9 @@
                 </ControlTemplate>
             </Button.Template>
             <StackPanel>
-                <TextBlock Text="{Binding BigCount}" FontSize="76" FontWeight="Bold"
-                           HorizontalAlignment="Center">
+                <TextBlock Text="{Binding BigCount}" HorizontalAlignment="Center">
                     <TextBlock.Style>
-                        <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource DisplayText}">
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding CountAlertOn}" Value="True">
                                     <Setter Property="Foreground" Value="{DynamicResource Theme.Danger}" />
@@ -89,8 +105,15 @@
                    HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"
                    Margin="0,4,0,0" />
 
-        <Button Content="Start Processing" Command="{Binding StartCommand}"
+        <Button Command="{Binding StartCommand}"
                 Style="{StaticResource PrimaryButton}" Height="48" Margin="0,14,0,0"
-                FontSize="15" />
+                FontSize="15" AutomationProperties.Name="Start Processing">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Style="{StaticResource Icon}" Text="&#xE768;" FontSize="15"
+                           Margin="0,0,9,0" Foreground="{DynamicResource Theme.AccentText}" />
+                <TextBlock Text="Start Processing"
+                           Foreground="{DynamicResource Theme.AccentText}" />
+            </StackPanel>
+        </Button>
     </StackPanel>
 </UserControl>

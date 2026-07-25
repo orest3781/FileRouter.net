@@ -319,12 +319,15 @@
                 Padding="10,7" SnapsToDevicePixels="True" MinWidth="220">
             <Grid>
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="22" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <ContentPresenter ContentSource="Header" RecognizesAccessKey="True"
-                                  VerticalAlignment="Center" />
-                <TextBlock x:Name="Gesture" Grid.Column="1" Margin="24,0,4,0"
+                <ContentPresenter ContentSource="Icon" VerticalAlignment="Center"
+                                  HorizontalAlignment="Left" />
+                <ContentPresenter Grid.Column="1" ContentSource="Header"
+                                  RecognizesAccessKey="True" VerticalAlignment="Center" />
+                <TextBlock x:Name="Gesture" Grid.Column="2" Margin="24,0,4,0"
                            VerticalAlignment="Center"
                            Text="{TemplateBinding InputGestureText}"
                            Foreground="{DynamicResource Theme.SubtleText}" />
@@ -644,6 +647,37 @@
     </Style>
 
     <!-- Named styles -->
+
+    <!-- Fluent glyphs from the system icon font — no image assets, always
+         theme-colored, crisp at any DPI. Win10 falls back to MDL2. -->
+    <Style x:Key="Icon" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+        <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- The type ramp: Display (the big count), Headline/Title, Section,
+         body (implicit), Caption. Displayed numbers use tabular figures so
+         changing counts don't wiggle. -->
+    <Style x:Key="DisplayText" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+        <Setter Property="FontSize" Value="76" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
+    </Style>
+
+    <Style x:Key="SectionText" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+
+    <Style x:Key="CaptionText" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+        <Setter Property="Foreground" Value="{DynamicResource Theme.SubtleText}" />
+        <Setter Property="FontSize" Value="11" />
+    </Style>
+
+    <!-- Gentle elevation for the few things that float: popups, transient
+         cards, dashboard tiles. Flat stays the rule; float means something. -->
+    <DropShadowEffect x:Key="Elevation1" BlurRadius="10" ShadowDepth="1.5"
+                      Direction="270" Opacity="0.28" Color="#000000" />
 
     <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
         <Setter Property="Background" Value="{DynamicResource Theme.Accent}" />

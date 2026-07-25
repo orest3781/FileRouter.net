@@ -58,6 +58,10 @@ public static class ThemeManager
         r["Theme.SurfaceHover"] = Brush(Mix(p.Surface, p.Text, 0.08));
         r["Theme.SurfacePressed"] = Brush(Mix(p.Surface, p.Text, 0.16));
         r["Theme.AccentHover"] = Brush(Mix(p.Accent, new Rgb(255, 255, 255), 0.12));
+        // floating surfaces sit a step lighter in the dark (light mode's
+        // Surface is already near-white; the shadow does the lifting there)
+        r["Theme.SurfaceRaised"] = Brush(
+            dark ? Mix(p.Surface, new Rgb(255, 255, 255), 0.06) : p.Surface);
 
         // Native-templated controls (menus, scrollbars, dialogs) read the
         // SystemColors brush keys — override them so dark mode reaches the

@@ -37,7 +37,7 @@
                 <ComboBoxItem Content="Hidden" />
             </ComboBox>
             <Button Command="{Binding RescanCommand}"
-                    Content="Refresh" Height="26" Padding="10,0" Margin="0,2,6,2"
+                    Height="26" Padding="10,0" Margin="0,2,6,2"
                     ToolTip="Rescan the inbox now">
                 <Button.Style>
                     <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
@@ -54,25 +54,46 @@
                         </Style.Triggers>
                     </Style>
                 </Button.Style>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource Icon}" Text="&#xE72C;"
+                               FontSize="12" Margin="0,0,6,0" />
+                    <TextBlock Text="Refresh" />
+                </StackPanel>
             </Button>
             </StackPanel>
 
             <Menu Padding="4,2">
             <MenuItem Header="_File">
-                <MenuItem Header="_Settings…" Click="OnSettings" InputGestureText="Ctrl+," />
+                <MenuItem Header="_Settings…" Click="OnSettings" InputGestureText="Ctrl+,">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE713;" /></MenuItem.Icon>
+                </MenuItem>
                 <Separator />
-                <MenuItem Header="_View history…" Click="OnViewHistory" />
+                <MenuItem Header="_View history…" Click="OnViewHistory">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE81C;" /></MenuItem.Icon>
+                </MenuItem>
                 <MenuItem Header="_Export history to spreadsheet…"
-                          Command="{Binding ExportHistoryCommand}" />
+                          Command="{Binding ExportHistoryCommand}">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE74E;" /></MenuItem.Icon>
+                </MenuItem>
                 <Separator />
-                <MenuItem Header="E_xit" Click="OnExit" />
+                <MenuItem Header="E_xit" Click="OnExit">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE7E8;" /></MenuItem.Icon>
+                </MenuItem>
             </MenuItem>
             <MenuItem Header="_Tools">
-                <MenuItem Header="_Unlock PDFs…" Click="OnUnlock" />
-                <MenuItem Header="_Bulk rename…" Click="OnBulkRename" />
-                <MenuItem Header="_Match and merge…" Click="OnMatchMerge" />
+                <MenuItem Header="_Unlock PDFs…" Click="OnUnlock">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE785;" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Bulk rename…" Click="OnBulkRename">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE8AC;" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="_Match and merge…" Click="OnMatchMerge">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE721;" /></MenuItem.Icon>
+                </MenuItem>
                 <Separator />
-                <MenuItem Header="Bo_x labels…" Click="OnLabelMaker" />
+                <MenuItem Header="Bo_x labels…" Click="OnLabelMaker">
+                    <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE8EC;" /></MenuItem.Icon>
+                </MenuItem>
             </MenuItem>
             </Menu>
         </Grid>
@@ -123,9 +144,30 @@
                           HorizontalScrollBarVisibility="Disabled" Focusable="False"
                           Background="{DynamicResource Theme.WindowBg}">
                 <Grid Margin="16,12">
-                    <views:ReadyView Visibility="{Binding IsReady, Converter={StaticResource BoolToVis}}" />
-                    <views:ProcessingView Visibility="{Binding IsProcessing, Converter={StaticResource BoolToVis}}" />
-                    <views:DoneView Visibility="{Binding IsDone, Converter={StaticResource BoolToVis}}" />
+                    <Grid.Resources>
+                        <!-- screens fade in over 150 ms — enough to soften the
+                             switch, never enough to make anyone wait -->
+                        <Style x:Key="ScreenFade" TargetType="UserControl">
+                            <Style.Triggers>
+                                <Trigger Property="Visibility" Value="Visible">
+                                    <Trigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                 From="0" To="1" Duration="0:0:0.15" />
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.EnterActions>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Resources>
+                    <views:ReadyView Style="{StaticResource ScreenFade}"
+                                     Visibility="{Binding IsReady, Converter={StaticResource BoolToVis}}" />
+                    <views:ProcessingView Style="{StaticResource ScreenFade}"
+                                          Visibility="{Binding IsProcessing, Converter={StaticResource BoolToVis}}" />
+                    <views:DoneView Style="{StaticResource ScreenFade}"
+                                    Visibility="{Binding IsDone, Converter={StaticResource BoolToVis}}" />
                 </Grid>
             </ScrollViewer>
         </Grid>
