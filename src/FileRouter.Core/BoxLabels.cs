@@ -52,9 +52,9 @@ public static class Code39
     }
 }
 
-/// <summary>Box labels: ten 4"×2" labels per US-letter sheet (the standard
-/// Avery 5163 grid), each carrying the created date, a large client+number
-/// code, its Code 39 barcode, and the destruction date.</summary>
+/// <summary>Box labels: ten 4"×2" labels per US-letter sheet, gutters between
+/// every pair for hand-cutting, each carrying the created date, a large
+/// client+number code, its Code 39 barcode, and the destruction date.</summary>
 public static class BoxLabels
 {
     static BoxLabels()
@@ -134,10 +134,12 @@ public static class BoxLabels
         return items;
     }
 
-    // Avery 5163 sheet geometry (inches): 2 columns × 5 rows of 4×2 labels.
+    // Sheet geometry (inches): 2 columns × 5 rows of 4×2 labels with a
+    // cutting gutter between every pair — these are cut by hand and slipped
+    // into box pouches, so no two labels ever share an edge.
     private const double LabelW = 4.0, LabelH = 2.0;
-    private const double MarginLeft = 0.15625, MarginTop = 0.5;
-    private const double PitchX = 4.1875, PitchY = 2.0;
+    private const double MarginLeft = 0.15625, MarginTop = 0.4;
+    private const double PitchX = 4.1875, PitchY = 2.125;   // 0.1875 / 0.125 gutters
 
     /// <summary>Write the print-ready PDF (US letter, print at 100% scale).</summary>
     public static void RenderPdf(string path, IReadOnlyList<Item> items)
@@ -166,12 +168,12 @@ public static class BoxLabels
         var page = doc.AddPage();
         page.Width = XUnit.FromInch(8.5);
         page.Height = XUnit.FromInch(11);
-        // the top 0.5" is outside the die-cut area — spend it on the one
+        // the top margin is outside the labels — spend it on the one
         // instruction that prevents a whole misprinted sheet
         using var gfx = XGraphics.FromPdfPage(page);
-        gfx.DrawString("Print at 100% scale (no “fit to page”)  ·  Avery 5163 — 10 labels, 4 × 2 in",
+        gfx.DrawString("Print at 100% scale (no “fit to page”)  ·  10 labels, 4 × 2 in  ·  cut along the gray guides",
             new XFont("Segoe UI", 6.5), new XSolidBrush(XColor.FromArgb(150, 150, 150)),
-            new XRect(0, XUnit.FromInch(0.18).Point, page.Width.Point, 10),
+            new XRect(0, XUnit.FromInch(0.16).Point, page.Width.Point, 10),
             XStringFormats.Center);
     }
 
@@ -212,7 +214,7 @@ public static class BoxLabels
         gfx.DrawString($"DESTROY AFTER {item.Destroy:yyyy-MM-dd}", barFont, XBrushes.White,
             new XRect(x, y + h - BarH, w, BarH), XStringFormats.Center);
 
-        // faint cut guide — invisible-ish on label stock, useful on plain paper
+        // the cut guide — every label is scissored out along this line
         gfx.DrawRectangle(cutLine, x, y, w, h);
     }
 

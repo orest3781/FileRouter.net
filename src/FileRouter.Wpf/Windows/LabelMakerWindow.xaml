@@ -115,7 +115,7 @@
                                     RelativeSource={RelativeSource AncestorType=Window},
                                     UpdateSourceTrigger=PropertyChanged}"
                              AutomationProperties.Name="Labels to print" />
-                    <TextBlock Grid.Column="2" Text="10 per sheet (Avery 5163, 4×2 in)"
+                    <TextBlock Grid.Column="2" Text="10 per sheet · 4×2 in · gutters for cutting"
                                Style="{StaticResource SubtleText}" FontSize="11"
                                VerticalAlignment="Center" Margin="8,0,0,0" />
                 </Grid>
