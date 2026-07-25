@@ -7,12 +7,23 @@
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         Style="{StaticResource {x:Type Window}}">
     <DockPanel Margin="14">
+        <TextBlock x:Name="PageInfo" DockPanel.Dock="Top" Margin="0,0,0,8"
+                   Style="{StaticResource SubtleText}" />
+
+        <!-- everything needed to print lives here — no OS dialog round trip
+             (whose Windows 11 preview pane can't render XPS jobs anyway) -->
         <DockPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
             <Button DockPanel.Dock="Right" Content="Cancel" Width="96" IsCancel="True" />
-            <Button DockPanel.Dock="Right" Content="Print…" Click="OnPrint"
+            <Button x:Name="PrintButton" DockPanel.Dock="Right" Content="Print" Click="OnPrint"
                     Style="{StaticResource PrimaryButton}" Width="110" Margin="0,0,8,0" />
-            <TextBlock x:Name="PageInfo" VerticalAlignment="Center"
-                       Style="{StaticResource SubtleText}" />
+            <TextBlock Text="Printer:" VerticalAlignment="Center" Margin="0,0,6,0" />
+            <ComboBox x:Name="Printers" MinWidth="220" VerticalAlignment="Center"
+                      AutomationProperties.Name="Printer" />
+            <TextBlock Text="Copies:" VerticalAlignment="Center" Margin="14,0,6,0" />
+            <TextBox x:Name="Copies" Width="44" Text="1" VerticalAlignment="Center"
+                     AutomationProperties.Name="Copies" />
+            <TextBlock x:Name="PrintNote" VerticalAlignment="Center" Margin="10,0,0,0"
+                       Style="{StaticResource StatusText}" TextTrimming="CharacterEllipsis" />
         </DockPanel>
 
         <!-- the exact document that spools: zoom and page through it here -->

@@ -87,8 +87,9 @@ workflow tests, builds, zips, and publishes.
   per letter sheet with cutting gutters — big client+number code, a Code 39
   barcode for hand scanners, created and destruction dates on black bars,
   per-client retention offsets, and a resettable running number; a live
-  preview shows the exact label, and printing happens in-app at guaranteed
-  100% scale, with PDF export as an alternative).
+  card previews the exact label, a full-sheet print preview with printer
+  picker prints in-app at guaranteed 100% scale, and PDF export remains as
+  an alternative).
 
 ## Structure
 
