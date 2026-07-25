@@ -19,6 +19,7 @@ public static class ThemeManager
 
     public static void Start(Application app, string mode = "auto")
     {
+        TitleBar.Hook();
         SetMode(app, mode);
         SystemEvents.UserPreferenceChanged += (_, e) =>
         {
@@ -71,6 +72,8 @@ public static class ThemeManager
         r[SystemColors.HighlightBrushKey] = Brush(p.Accent);
         r[SystemColors.HighlightTextBrushKey] = Brush(p.AccentText);
         r[SystemColors.GrayTextBrushKey] = Brush(p.SubtleText);
+
+        TitleBar.ApplyAll(app);   // window chrome follows the theme too
     }
 
     public static SolidColorBrush Brush(Rgb c)

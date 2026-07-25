@@ -18,7 +18,7 @@
             <views:FileNameConverter x:Key="FileName" />
             <views:FontFamilyStringConverter x:Key="FontFamilyString" />
             <views:FontSizeTextConverter x:Key="FontSizeText" />
-            <FontFamily x:Key="AppFontFamily">Segoe UI</FontFamily>
+            <FontFamily x:Key="AppFontFamily">Segoe UI Variable Text, Segoe UI</FontFamily>
             <sys:Double x:Key="AppFontSize" xmlns:sys="clr-namespace:System;assembly=mscorlib">14</sys:Double>
         </ResourceDictionary>
     </Application.Resources>

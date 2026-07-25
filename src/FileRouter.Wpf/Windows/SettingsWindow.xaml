@@ -393,7 +393,7 @@
                                  label · suffix · hotkey -->
                             <TextBlock Text="Preview:" Style="{StaticResource FieldLabel}"
                                        Margin="0,14,0,4" />
-                            <Border Height="44" CornerRadius="4"
+                            <Border Height="44" CornerRadius="6"
                                     Background="{Binding PreviewBack, Converter={StaticResource RgbToBrush}}">
                                 <TextBlock Text="{Binding PreviewLabel}"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -478,7 +478,7 @@
                                 </StackPanel.Style>
                                 <Grid Style="{StaticResource FieldRow}">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="110" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Label:" Style="{StaticResource FieldLabel}" />
@@ -486,7 +486,7 @@
                                 </Grid>
                                 <Grid Style="{StaticResource FieldRow}">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="110" />
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="Auto" />
@@ -501,7 +501,7 @@
                                             Command="{Binding DataContext.OpenWatchFolderCommand,
                                                       RelativeSource={RelativeSource AncestorType=Window}}" />
                                 </Grid>
-                                <StackPanel Orientation="Horizontal" Margin="90,0,0,10">
+                                <StackPanel Orientation="Horizontal" Margin="110,0,0,10">
                                     <StackPanel.Style>
                                         <Style TargetType="StackPanel">
                                             <Style.Triggers>
@@ -529,7 +529,7 @@
                                 </StackPanel>
                                 <Grid Style="{StaticResource FieldRow}">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="110" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="File types:" Style="{StaticResource FieldLabel}"
@@ -559,19 +559,19 @@
                                         </StackPanel>
                                     </StackPanel>
                                 </Grid>
-                                <CheckBox Content="include subfolders" Margin="90,0,0,10"
+                                <CheckBox Content="include subfolders" Margin="110,0,0,10"
                                           IsChecked="{Binding Recursive}"
                                           ToolTip="Alerting files found in a subfolder show 'in ⟨subfolder⟩' on the tile" />
                                 <Grid Style="{StaticResource FieldRow}">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="110" />
                                         <ColumnDefinition Width="120" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="Tile color:" Style="{StaticResource FieldLabel}" />
                                     <TextBox Grid.Column="1" Text="{Binding Color, UpdateSourceTrigger=PropertyChanged}" />
                                 </Grid>
                                 <ItemsControl ItemsSource="{x:Static vm:SettingsViewModel.SwatchColors}"
-                                              Margin="90,2,0,8">
+                                              Margin="110,2,0,8">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
                                             <WrapPanel />
@@ -609,7 +609,7 @@
                                                        Converter={StaticResource BoolToVis}}">
                                 <TextBlock Text="Preview:" Style="{StaticResource FieldLabel}"
                                            Margin="0,0,0,4" />
-                                <Border Width="230" MinHeight="78" CornerRadius="4" Padding="12,8"
+                                <Border Width="230" MinHeight="78" CornerRadius="6" Padding="12,8"
                                         HorizontalAlignment="Left"
                                         Background="{Binding TilePreviewBack, Converter={StaticResource RgbToBrush}}">
                                     <StackPanel>

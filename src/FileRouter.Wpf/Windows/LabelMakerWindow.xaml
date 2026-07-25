@@ -74,7 +74,7 @@
 
                 <Grid Margin="0,0,0,10">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="130" />
                         <ColumnDefinition Width="140" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
@@ -89,7 +89,7 @@
 
                 <Grid Margin="0,0,0,10">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="130" />
                         <ColumnDefinition Width="140" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
@@ -104,7 +104,7 @@
 
                 <Grid Margin="0,0,0,10">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="130" />
                         <ColumnDefinition Width="140" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
@@ -121,7 +121,7 @@
 
                 <Grid Margin="0,0,0,4">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="130" />
                         <ColumnDefinition Width="60" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
@@ -154,7 +154,7 @@
                 <TextBlock Text="{Binding Preview}" FontWeight="SemiBold" TextWrapping="Wrap"
                            Margin="0,0,0,6" />
                 <Border BorderBrush="{DynamicResource Theme.Border}" BorderThickness="1"
-                        CornerRadius="4" Padding="10"
+                        CornerRadius="8" Padding="10"
                         Background="{DynamicResource Theme.Surface}">
                     <Grid Height="160">
                         <views:LabelPreviewControl Item="{Binding PreviewItem}"

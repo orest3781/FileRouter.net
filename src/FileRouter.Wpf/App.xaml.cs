@@ -65,10 +65,14 @@ public partial class App : Application
 
     /// <summary>ui_font_family / ui_font_size land in the AppFontFamily and
     /// AppFontSize resources every window's style consumes.</summary>
+    /// <summary>The default face: Segoe UI Variable (the Windows 11 optical
+    /// font) with a plain Segoe UI fallback for older Windows.</summary>
+    internal const string DefaultFontChain = "Segoe UI Variable Text, Segoe UI";
+
     public static void ApplyFont(Application app, Config cfg)
     {
         app.Resources["AppFontFamily"] = new System.Windows.Media.FontFamily(
-            string.IsNullOrWhiteSpace(cfg.UiFontFamily) ? "Segoe UI" : cfg.UiFontFamily);
+            string.IsNullOrWhiteSpace(cfg.UiFontFamily) ? DefaultFontChain : cfg.UiFontFamily);
         app.Resources["AppFontSize"] = cfg.UiFontSize == 0 ? 14.0 : (double)cfg.UiFontSize;
     }
 
