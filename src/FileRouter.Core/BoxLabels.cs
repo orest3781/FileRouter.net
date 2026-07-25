@@ -144,8 +144,8 @@ public static class BoxLabels
     {
         if (items.Count == 0) throw new ArgumentException("Nothing to print.");
         using var doc = new PdfDocument();
-        var small = new XFont("Segoe UI", 8);
-        var destroyFont = new XFont("Segoe UI", 11.5, XFontStyleEx.Bold);
+        // one size for both date bars — readable across a storage room
+        var barFont = new XFont("Segoe UI", 12, XFontStyleEx.Bold);
         var cutLine = new XPen(XColor.FromArgb(210, 210, 210), 0.4);
 
         for (var i = 0; i < items.Count; i++)
@@ -156,7 +156,7 @@ public static class BoxLabels
             var slot = i % PerSheet;
             var x = XUnit.FromInch(MarginLeft + slot % 2 * PitchX).Point;
             var y = XUnit.FromInch(MarginTop + slot / 2 * PitchY).Point;
-            DrawLabel(gfx, items[i], x, y, small, destroyFont, cutLine);
+            DrawLabel(gfx, items[i], x, y, barFont, cutLine);
         }
         doc.Save(path);
     }
@@ -187,30 +187,30 @@ public static class BoxLabels
         return new XFont("Consolas", 10, XFontStyleEx.Bold);
     }
 
-    private const double TopBarH = 18, BottomBarH = 22;
+    private const double BarH = 22;   // both date bars, same height
 
     private static void DrawLabel(XGraphics gfx, Item item, double x, double y,
-        XFont small, XFont destroyFont, XPen cutLine)
+        XFont barFont, XPen cutLine)
     {
         var w = XUnit.FromInch(LabelW).Point;
         var h = XUnit.FromInch(LabelH).Point;
 
-        // the dates ride on full-width black bars — visible across a storage
-        // room, and the destruction date can't be mistaken for decoration
-        gfx.DrawRectangle(XBrushes.Black, x, y, w, TopBarH);
-        gfx.DrawString($"Created {item.Created:yyyy-MM-dd}", small, XBrushes.White,
-            new XRect(x, y, w, TopBarH), XStringFormats.Center);
+        // the dates ride matching full-width black bars — visible across a
+        // storage room, and the destruction date can't be mistaken for decoration
+        gfx.DrawRectangle(XBrushes.Black, x, y, w, BarH);
+        gfx.DrawString($"CREATED {item.Created:yyyy-MM-dd}", barFont, XBrushes.White,
+            new XRect(x, y, w, BarH), XStringFormats.Center);
 
         var display = DisplayCode(item.Code);
         gfx.DrawString(display, FitCodeFont(gfx, display, w - 20), XBrushes.Black,
-            new XRect(x, y + TopBarH + 4, w, 36), XStringFormats.Center);
+            new XRect(x, y + BarH + 2, w, 34), XStringFormats.Center);
         // clear air between the digit strokes and the bars — an angled scan
         // sweep must never catch both
-        DrawBarcode(gfx, item.Code, x, y + 68, w, height: 42);
+        DrawBarcode(gfx, item.Code, x, y + 66, w, height: 42);
 
-        gfx.DrawRectangle(XBrushes.Black, x, y + h - BottomBarH, w, BottomBarH);
-        gfx.DrawString($"DESTROY AFTER {item.Destroy:yyyy-MM-dd}", destroyFont, XBrushes.White,
-            new XRect(x, y + h - BottomBarH, w, BottomBarH), XStringFormats.Center);
+        gfx.DrawRectangle(XBrushes.Black, x, y + h - BarH, w, BarH);
+        gfx.DrawString($"DESTROY AFTER {item.Destroy:yyyy-MM-dd}", barFont, XBrushes.White,
+            new XRect(x, y + h - BarH, w, BarH), XStringFormats.Center);
 
         // faint cut guide — invisible-ish on label stock, useful on plain paper
         gfx.DrawRectangle(cutLine, x, y, w, h);
