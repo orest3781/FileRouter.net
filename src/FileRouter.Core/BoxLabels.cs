@@ -148,22 +148,30 @@ public static class BoxLabels
         page.Height = XUnit.FromInch(11);
     }
 
+    private const double TopBarH = 18, BottomBarH = 22;
+
     private static void DrawLabel(XGraphics gfx, Item item, double x, double y,
         XFont small, XFont destroyFont, XFont codeFont, XPen cutLine)
     {
         var w = XUnit.FromInch(LabelW).Point;
         var h = XUnit.FromInch(LabelH).Point;
 
+        // the dates ride on full-width black bars — visible across a storage
+        // room, and the destruction date can't be mistaken for decoration
+        gfx.DrawRectangle(XBrushes.Black, x, y, w, TopBarH);
+        gfx.DrawString($"Created {item.Created:yyyy-MM-dd}", small, XBrushes.White,
+            new XRect(x, y, w, TopBarH), XStringFormats.Center);
+
+        gfx.DrawString(item.Code, codeFont, XBrushes.Black,
+            new XRect(x, y + TopBarH + 4, w, 36), XStringFormats.Center);
+        DrawBarcode(gfx, item.Code, x, y + 62, w, height: 42);
+
+        gfx.DrawRectangle(XBrushes.Black, x, y + h - BottomBarH, w, BottomBarH);
+        gfx.DrawString($"DESTROY AFTER {item.Destroy:yyyy-MM-dd}", destroyFont, XBrushes.White,
+            new XRect(x, y + h - BottomBarH, w, BottomBarH), XStringFormats.Center);
+
         // faint cut guide — invisible-ish on label stock, useful on plain paper
         gfx.DrawRectangle(cutLine, x, y, w, h);
-
-        gfx.DrawString($"Created {item.Created:yyyy-MM-dd}", small, XBrushes.Black,
-            new XRect(x, y + 7, w, 12), XStringFormats.TopCenter);
-        gfx.DrawString(item.Code, codeFont, XBrushes.Black,
-            new XRect(x, y + 22, w, 36), XStringFormats.Center);
-        DrawBarcode(gfx, item.Code, x, y + 64, w, height: 42);
-        gfx.DrawString($"DESTROY AFTER {item.Destroy:yyyy-MM-dd}", destroyFont, XBrushes.Black,
-            new XRect(x, y + h - 24, w, 14), XStringFormats.TopCenter);
     }
 
     private static void DrawBarcode(XGraphics gfx, string code, double x, double y,
