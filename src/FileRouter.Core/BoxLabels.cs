@@ -62,20 +62,30 @@ public static class BoxLabels
         // the core PdfSharp build resolves NO fonts on its own — point it at
         // the Windows font folder once, before the first XFont is created
         if (PdfSharp.Fonts.GlobalFontSettings.FontResolver is null)
-            PdfSharp.Fonts.GlobalFontSettings.FontResolver = new SegoeFontResolver();
+            PdfSharp.Fonts.GlobalFontSettings.FontResolver = new LabelFontResolver();
     }
 
-    /// <summary>Serves Segoe UI (regular/bold) from C:\Windows\Fonts for every
-    /// requested family — the app only ever asks for Segoe UI.</summary>
-    private sealed class SegoeFontResolver : PdfSharp.Fonts.IFontResolver
+    /// <summary>Serves Segoe UI and Consolas (regular/bold) from
+    /// C:\Windows\Fonts — the only families the labels use. Consolas carries
+    /// the code line: monospaced with a slashed zero, so 0/O and 1/I can't be
+    /// confused when someone transcribes a label by hand.</summary>
+    private sealed class LabelFontResolver : PdfSharp.Fonts.IFontResolver
     {
         public PdfSharp.Fonts.FontResolverInfo ResolveTypeface(
             string familyName, bool bold, bool italic) =>
-            new(bold ? "segoe#b" : "segoe#r");
+            familyName.Equals("Consolas", StringComparison.OrdinalIgnoreCase)
+                ? new(bold ? "consola#b" : "consola#r")
+                : new(bold ? "segoe#b" : "segoe#r");
 
         public byte[] GetFont(string faceName) => File.ReadAllBytes(Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.Fonts),
-            faceName == "segoe#b" ? "segoeuib.ttf" : "segoeui.ttf"));
+            faceName switch
+            {
+                "consola#b" => "consolab.ttf",
+                "consola#r" => "consola.ttf",
+                "segoe#b" => "segoeuib.ttf",
+                _ => "segoeui.ttf",
+            }));
     }
 
     public sealed record Item(string Code, DateTime Created, DateTime Destroy);
@@ -86,6 +96,17 @@ public static class BoxLabels
     /// <summary>"ABCD" + 42 → "ABCD00000042".</summary>
     public static string Compose(string clientId, long number) =>
         clientId + number.ToString("D8");
+
+    /// <summary>Display-only digit grouping for the printed code line:
+    /// "ABCD00000042" → "ABCD 0000 0042". The barcode always carries the
+    /// continuous code — this is purely for human reading/transcription.</summary>
+    public static string DisplayCode(string code)
+    {
+        if (code.Length <= 8) return code;
+        for (var i = code.Length - 8; i < code.Length; i++)
+            if (code[i] is < '0' or > '9') return code;
+        return $"{code[..^8]} {code[^8..^4]} {code[^4..]}";
+    }
 
     /// <summary>Problem with a client id, or "" when it's usable (2-8
     /// characters, capital letters and digits only — Code 39's alphabet).</summary>
@@ -124,8 +145,7 @@ public static class BoxLabels
         if (items.Count == 0) throw new ArgumentException("Nothing to print.");
         using var doc = new PdfDocument();
         var small = new XFont("Segoe UI", 8);
-        var destroyFont = new XFont("Segoe UI", 9, XFontStyleEx.Bold);
-        var codeFont = new XFont("Segoe UI", 26, XFontStyleEx.Bold);
+        var destroyFont = new XFont("Segoe UI", 11.5, XFontStyleEx.Bold);
         var cutLine = new XPen(XColor.FromArgb(210, 210, 210), 0.4);
 
         for (var i = 0; i < items.Count; i++)
@@ -136,7 +156,7 @@ public static class BoxLabels
             var slot = i % PerSheet;
             var x = XUnit.FromInch(MarginLeft + slot % 2 * PitchX).Point;
             var y = XUnit.FromInch(MarginTop + slot / 2 * PitchY).Point;
-            DrawLabel(gfx, items[i], x, y, small, destroyFont, codeFont, cutLine);
+            DrawLabel(gfx, items[i], x, y, small, destroyFont, cutLine);
         }
         doc.Save(path);
     }
@@ -146,12 +166,31 @@ public static class BoxLabels
         var page = doc.AddPage();
         page.Width = XUnit.FromInch(8.5);
         page.Height = XUnit.FromInch(11);
+        // the top 0.5" is outside the die-cut area — spend it on the one
+        // instruction that prevents a whole misprinted sheet
+        using var gfx = XGraphics.FromPdfPage(page);
+        gfx.DrawString("Print at 100% scale (no “fit to page”)  ·  Avery 5163 — 10 labels, 4 × 2 in",
+            new XFont("Segoe UI", 6.5), new XSolidBrush(XColor.FromArgb(150, 150, 150)),
+            new XRect(0, XUnit.FromInch(0.18).Point, page.Width.Point, 10),
+            XStringFormats.Center);
+    }
+
+    /// <summary>26pt when it fits, stepped down for long client ids — the
+    /// code line must never crowd the label edges or clip.</summary>
+    private static XFont FitCodeFont(XGraphics gfx, string display, double maxWidth)
+    {
+        for (var size = 26.0; size > 10; size -= 1)
+        {
+            var font = new XFont("Consolas", size, XFontStyleEx.Bold);
+            if (gfx.MeasureString(display, font).Width <= maxWidth) return font;
+        }
+        return new XFont("Consolas", 10, XFontStyleEx.Bold);
     }
 
     private const double TopBarH = 18, BottomBarH = 22;
 
     private static void DrawLabel(XGraphics gfx, Item item, double x, double y,
-        XFont small, XFont destroyFont, XFont codeFont, XPen cutLine)
+        XFont small, XFont destroyFont, XPen cutLine)
     {
         var w = XUnit.FromInch(LabelW).Point;
         var h = XUnit.FromInch(LabelH).Point;
@@ -162,9 +201,12 @@ public static class BoxLabels
         gfx.DrawString($"Created {item.Created:yyyy-MM-dd}", small, XBrushes.White,
             new XRect(x, y, w, TopBarH), XStringFormats.Center);
 
-        gfx.DrawString(item.Code, codeFont, XBrushes.Black,
+        var display = DisplayCode(item.Code);
+        gfx.DrawString(display, FitCodeFont(gfx, display, w - 20), XBrushes.Black,
             new XRect(x, y + TopBarH + 4, w, 36), XStringFormats.Center);
-        DrawBarcode(gfx, item.Code, x, y + 62, w, height: 42);
+        // clear air between the digit strokes and the bars — an angled scan
+        // sweep must never catch both
+        DrawBarcode(gfx, item.Code, x, y + 68, w, height: 42);
 
         gfx.DrawRectangle(XBrushes.Black, x, y + h - BottomBarH, w, BottomBarH);
         gfx.DrawString($"DESTROY AFTER {item.Destroy:yyyy-MM-dd}", destroyFont, XBrushes.White,
@@ -179,9 +221,10 @@ public static class BoxLabels
     {
         var elements = Code39.Encode(code);
         // 3:1 wide:narrow ratio; the bar field spans the label minus quiet
-        // zones (≥10 narrow units each side keeps hand scanners happy)
+        // zones (≥10 narrow units each side keeps hand scanners happy). The
+        // 0.18" side insets keep long client ids above ~12 mil bars.
         var units = elements.Sum(e => e.Wide ? 3 : 1) + 20;
-        var printable = XUnit.FromInch(LabelW - 0.5).Point;
+        var printable = XUnit.FromInch(LabelW - 0.36).Point;
         var narrow = printable / units;
         var cursor = x + (labelW - printable) / 2 + narrow * 10;
         foreach (var e in elements)

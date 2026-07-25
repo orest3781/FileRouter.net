@@ -30,6 +30,15 @@ public class BoxLabelsTests
         else Assert.Contains(expectedFragment, problem);
     }
 
+    [Theory]
+    [InlineData("ABCD00000042", "ABCD 0000 0042")]
+    [InlineData("CLIENT0100000001", "CLIENT01 0000 0001")]
+    [InlineData("AB99999999", "AB 9999 9999")]
+    [InlineData("SHORT", "SHORT")]                    // nothing to group
+    [InlineData("ABCDEFGHIJKL", "ABCDEFGHIJKL")]      // tail isn't digits
+    public void DisplayCodeGroupsTheDigitsForHumansOnly(string code, string display) =>
+        Assert.Equal(display, BoxLabels.DisplayCode(code));
+
     [Fact]
     public void BatchNumbersRunConsecutivelyWithTheRetentionDate()
     {
