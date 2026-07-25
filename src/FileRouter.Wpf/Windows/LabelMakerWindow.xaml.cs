@@ -14,6 +14,7 @@ public partial class LabelMakerWindow : Window
         InitializeComponent();
         DataContext = vm;
         vm.PrintSheets = PrintSheets;
+        vm.RequestIdFocus += () => { IdBox.Focus(); IdBox.SelectAll(); };
         // client edits are settings — they stick even without printing
         Closing += (_, _) => vm.Persist();
     }

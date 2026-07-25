@@ -12,9 +12,27 @@ public sealed class LabelClientVm : ObservableObject
     private string _id = "", _destroyDaysText = "30", _nextNumberText = "1";
 
     /// <summary>Uppercased as typed — the barcode alphabet is A-Z 0-9.</summary>
-    public string Id { get => _id; set => Set(ref _id, value.ToUpperInvariant().Trim()); }
-    public string DestroyDaysText { get => _destroyDaysText; set => Set(ref _destroyDaysText, value); }
-    public string NextNumberText { get => _nextNumberText; set => Set(ref _nextNumberText, value); }
+    public string Id
+    {
+        get => _id;
+        set { if (Set(ref _id, value.ToUpperInvariant().Trim())) Raise(nameof(Summary)); }
+    }
+
+    public string DestroyDaysText
+    {
+        get => _destroyDaysText;
+        set { if (Set(ref _destroyDaysText, value)) Raise(nameof(Summary)); }
+    }
+
+    public string NextNumberText
+    {
+        get => _nextNumberText;
+        set { if (Set(ref _nextNumberText, value)) Raise(nameof(Summary)); }
+    }
+
+    /// <summary>Hover detail for the client list row.</summary>
+    public string Summary =>
+        $"{DestroyDaysText}-day retention   ·   next label {NextNumberText}";
 
     public Dictionary<string, System.Text.Json.JsonElement> Extras { get; init; } = new();
 
@@ -64,10 +82,21 @@ public sealed class LabelMakerViewModel : ObservableObject
         {
             var vm = Hook(Clients.AddReturn(new LabelClientVm()));
             Selected = vm;
+            RequestIdFocus?.Invoke();   // the id box is the only next step
         });
         RemoveClientCommand = new RelayCommand(() =>
         {
-            if (Selected is { } s) Clients.Remove(s);
+            if (Selected is not { } s) return;
+            // the running number is what keeps box numbers unique — removing
+            // it is the one destructive act in this window, so it confirms
+            // (a just-added blank row goes quietly)
+            var pristine = s.Id.Length == 0 && s.NextNumberText.Trim() is "" or "1";
+            if (!pristine && !_dialogs.Confirm(
+                    $"Remove \"{s.Id}\"?\n\nIts running label number ({s.NextNumberText}) "
+                    + "will be lost — re-adding the client starts back at 1.",
+                    "FileRouter — label maker"))
+                return;
+            Clients.Remove(s);
             Selected = Clients.FirstOrDefault();
         }, () => Selected is not null);
         ResetNumberCommand = new RelayCommand(
@@ -87,6 +116,10 @@ public sealed class LabelMakerViewModel : ObservableObject
     /// <summary>The window's print path reports failures through the same
     /// dialog service the view model uses.</summary>
     internal IDialogService Dialogs => _dialogs;
+
+    /// <summary>Raised after Add so the view can put the caret in the
+    /// client-id box — typing the id is the only sensible next step.</summary>
+    public event Action? RequestIdFocus;
 
     private LabelClientVm Hook(LabelClientVm vm)
     {

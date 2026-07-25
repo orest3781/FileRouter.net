@@ -10,10 +10,14 @@
             <Button DockPanel.Dock="Right" Content="Close" Width="96" IsCancel="True" />
             <Button DockPanel.Dock="Right" Content="Save PDF…" Command="{Binding SavePdfCommand}"
                     Width="110" Margin="0,0,8,0" />
+            <!-- IsDefault is safe here: Enter only opens the preview, which
+                 Esc backs out of — nothing spools without a second Print -->
             <Button DockPanel.Dock="Right" Content="Print…" Command="{Binding PrintCommand}"
-                    Style="{StaticResource PrimaryButton}" Width="110" Margin="0,0,8,0" />
+                    Style="{StaticResource PrimaryButton}" Width="110" Margin="0,0,8,0"
+                    IsDefault="True" />
             <TextBlock Text="{Binding Status}" Style="{StaticResource StatusText}"
-                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                       ToolTip="{Binding Status}" />
         </DockPanel>
 
         <Grid>
@@ -37,7 +41,7 @@
                              AutomationProperties.Name="Clients">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <DockPanel>
+                                <DockPanel ToolTip="{Binding Summary}" Background="Transparent">
                                     <!-- the next number, at a glance -->
                                     <TextBlock DockPanel.Dock="Right" Text="{Binding NextNumberText}"
                                                Style="{StaticResource SubtleText}" FontSize="11"
@@ -75,7 +79,7 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="Client id:" VerticalAlignment="Center" Margin="0,0,10,0" />
-                    <TextBox Grid.Column="1" CharacterCasing="Upper"
+                    <TextBox x:Name="IdBox" Grid.Column="1" CharacterCasing="Upper" MaxLength="8"
                              Text="{Binding Id, UpdateSourceTrigger=PropertyChanged}"
                              AutomationProperties.Name="Client id" />
                     <TextBlock Grid.Column="2" Text="2-8 letters or digits"

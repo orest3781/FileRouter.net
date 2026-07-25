@@ -204,6 +204,44 @@ public class LabelMakerViewModelTests : IDisposable
     }
 
     [Fact]
+    public void RemovingARealClientAsksFirstAndDecliningKeepsIt()
+    {
+        var cfg = new Config
+        {
+            LabelClients = { new LabelClient { Id = "MEDR", NextNumber = 5000 } },
+        };
+        var vm = Vm(cfg);
+
+        _dialogs.ConfirmAnswer = false;              // "No" — the counter survives
+        vm.RemoveClientCommand.Execute(null);
+        Assert.Single(vm.Clients);
+
+        _dialogs.ConfirmAnswer = true;               // "Yes" — deliberate removal
+        vm.RemoveClientCommand.Execute(null);
+        Assert.Empty(vm.Clients);
+    }
+
+    [Fact]
+    public void RemovingAJustAddedBlankRowDoesNotNag()
+    {
+        var vm = Vm(new Config());
+        vm.AddClientCommand.Execute(null);
+        _dialogs.ConfirmAnswer = false;              // would block if it asked
+        vm.RemoveClientCommand.Execute(null);
+        Assert.Empty(vm.Clients);                    // removed without a prompt
+    }
+
+    [Fact]
+    public void AddRequestsFocusOnTheIdBox()
+    {
+        var vm = Vm(new Config());
+        var asked = 0;
+        vm.RequestIdFocus += () => asked++;
+        vm.AddClientCommand.Execute(null);
+        Assert.Equal(1, asked);
+    }
+
+    [Fact]
     public void BatchNearTheCeilingIsCaughtBeforeTheDialog()
     {
         var cfg = new Config
