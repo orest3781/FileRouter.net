@@ -222,6 +222,10 @@ public partial class MainWindow : Window
         new Windows.MatchMergeWindow(new MatchMergeViewModel(
             Shell.Cfg, Shell.SaveMergeHeaders, Dialogs)) { Owner = this }.ShowDialog();
 
+    private void OnLabelMaker(object sender, RoutedEventArgs e) =>
+        new Windows.LabelMakerWindow(new LabelMakerViewModel(
+            Shell.Cfg, Shell.SaveConfigNow, Dialogs)) { Owner = this }.ShowDialog();
+
     private void OnSettings(object sender, RoutedEventArgs e)
     {
         if (!Shell.IsReady)

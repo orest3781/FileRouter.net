@@ -7,7 +7,7 @@ using FileRouter.Wpf.Windows;
 public static class DialogCheck
 {
     public static int Run() => SmokeUi.RunSta(Drive,
-        "DIALOGS OK — all six construct cleanly",
+        "DIALOGS OK — all seven construct cleanly",
         "DIALOG FAIL:");
 
     private static List<string> Drive()
@@ -33,6 +33,8 @@ public static class DialogCheck
         Check("MatchMerge", () => new MatchMergeWindow(
             new MatchMergeViewModel(new Config(), _ => { }, dialogs)));
         Check("Settings", () => new SettingsWindow(new SettingsViewModel(new Config(), dialogs)));
+        Check("LabelMaker", () => new LabelMakerWindow(
+            new LabelMakerViewModel(new Config(), () => { }, dialogs)));
         Check("Triage", () => new TriageWindow(new List<MatchMerge.MatchResult>(), new[] { "A", "B" }));
 
         using (var history = new History(Path.Combine(dir, "history.sqlite")))

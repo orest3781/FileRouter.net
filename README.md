@@ -80,10 +80,13 @@ workflow tests, builds, zips, and publishes.
   happens as you type. Unknown hand-edited config keys always survive.
 - **Tools** — *Unlock PDFs* (verified in-place decrypt or suffixed copies,
   saved passwords DPAPI-encrypted per Windows account), *Bulk rename*
-  (find/replace, affixes, case, hand-editable preview, batch undo), and
+  (find/replace, affixes, case, hand-editable preview, batch undo),
   *Match & merge* (pair PDFs against a roster CSV by name and merge each
   person's ID into the filename, with a side-by-side Triage view for
-  ambiguous matches).
+  ambiguous matches), and *Box labels* (print-ready PDFs of storage-box
+  labels, ten per letter sheet on the Avery 5163 grid — big client+number
+  code, a Code 39 barcode for hand scanners, created and destruction dates,
+  with per-client retention offsets and a resettable running number).
 
 ## Structure
 

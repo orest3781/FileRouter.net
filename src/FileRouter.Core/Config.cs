@@ -31,6 +31,17 @@ public sealed class WatchFolder
     [JsonExtensionData] public Dictionary<string, System.Text.Json.JsonElement> Extras { get; set; } = new();
 }
 
+/// <summary>One box-label client: its own retention offset (created date +
+/// days = destruction date) and a resettable running label number.</summary>
+public sealed class LabelClient
+{
+    [JsonPropertyName("id")] public string Id { get; set; } = "";
+    [JsonPropertyName("destroy_days")] public int DestroyDays { get; set; } = 30;
+    [JsonPropertyName("next_number")] public long NextNumber { get; set; } = 1;
+
+    [JsonExtensionData] public Dictionary<string, System.Text.Json.JsonElement> Extras { get; set; } = new();
+}
+
 /// <summary>A saved Unlock-tool password. The password value is either
 /// DPAPI-protected ("dpapi:&lt;base64&gt;", written by the app) or legacy
 /// plaintext (hand-edited / migrated from the Python config).</summary>
@@ -88,6 +99,7 @@ public sealed class Config
     // Unlock tool: "" = decrypt the original in place; else suffix for a copy
     [JsonPropertyName("unlock_suffix")] public string UnlockSuffix { get; set; } = "";
     [JsonPropertyName("saved_passwords")] public List<SavedPassword> SavedPasswords { get; set; } = new();
+    [JsonPropertyName("label_clients")] public List<LabelClient> LabelClients { get; set; } = new();
 
     [JsonExtensionData] public Dictionary<string, JsonElement> Extras { get; set; } = new();
 

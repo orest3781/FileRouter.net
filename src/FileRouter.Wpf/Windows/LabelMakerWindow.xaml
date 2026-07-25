@@ -1,0 +1,132 @@
+<Window x:Class="FileRouter.Wpf.Windows.LabelMakerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="FileRouter — Box labels" Width="640" Height="480" MinWidth="560" MinHeight="420"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Style="{StaticResource {x:Type Window}}">
+    <DockPanel Margin="14">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right"
+                    Margin="0,10,0,0">
+            <Button Content="Create PDF…" Command="{Binding GenerateCommand}"
+                    Style="{StaticResource PrimaryButton}" Width="120" Margin="0,0,8,0" />
+            <Button Content="Close" Width="96" IsCancel="True" />
+        </StackPanel>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="180" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- client list -->
+            <DockPanel>
+                <WrapPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                    <Button Content="Add" Command="{Binding AddClientCommand}" MinWidth="48" Margin="0,0,4,0" />
+                    <Button Content="Remove" Command="{Binding RemoveClientCommand}" />
+                </WrapPanel>
+                <Grid>
+                    <ListBox ItemsSource="{Binding Clients}" SelectedItem="{Binding Selected}"
+                             AutomationProperties.Name="Clients">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Id}" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <TextBlock Text="No clients yet — press Add." Style="{StaticResource SubtleText}"
+                               Margin="10" IsHitTestVisible="False">
+                        <TextBlock.Visibility>
+                            <Binding Path="Clients.Count" Converter="{StaticResource ZeroToVis}" />
+                        </TextBlock.Visibility>
+                    </TextBlock>
+                </Grid>
+            </DockPanel>
+
+            <!-- selected client -->
+            <StackPanel Grid.Column="1" Margin="16,0,0,0" DataContext="{Binding Selected}">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding}" Value="{x:Null}">
+                                <Setter Property="IsEnabled" Value="False" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="140" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Client id:" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <TextBox Grid.Column="1" CharacterCasing="Upper"
+                             Text="{Binding Id, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="Client id" />
+                    <TextBlock Grid.Column="2" Text="2-8 letters or digits"
+                               Style="{StaticResource SubtleText}" FontSize="11"
+                               VerticalAlignment="Center" Margin="8,0,0,0" />
+                </Grid>
+
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="140" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Keep boxes (days):" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <TextBox Grid.Column="1"
+                             Text="{Binding DestroyDaysText, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="Keep boxes days" />
+                    <TextBlock Grid.Column="2" Text="sets the destruction date"
+                               Style="{StaticResource SubtleText}" FontSize="11"
+                               VerticalAlignment="Center" Margin="8,0,0,0" />
+                </Grid>
+
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="140" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Next label number:" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <TextBox Grid.Column="1"
+                             Text="{Binding NextNumberText, UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="Next label number" />
+                    <Button Grid.Column="2" Content="Reset to 1" Margin="8,0,0,0"
+                            Command="{Binding DataContext.ResetNumberCommand,
+                                      RelativeSource={RelativeSource AncestorType=Window}}" />
+                </Grid>
+
+                <Grid Margin="0,4,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="140" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Labels to print:" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <TextBox Grid.Column="1"
+                             Text="{Binding DataContext.LabelCountText,
+                                    RelativeSource={RelativeSource AncestorType=Window},
+                                    UpdateSourceTrigger=PropertyChanged}"
+                             AutomationProperties.Name="Labels to print" />
+                    <TextBlock Grid.Column="2" Text="10 per sheet (Avery 5163, 4×2 in)"
+                               Style="{StaticResource SubtleText}" FontSize="11"
+                               VerticalAlignment="Center" Margin="8,0,0,0" />
+                </Grid>
+            </StackPanel>
+
+            <!-- live preview of the first label + result line -->
+            <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,12,0,0">
+                <TextBlock Text="{Binding Preview}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding Status}" Style="{StaticResource StatusText}"
+                           Margin="0,6,0,0" TextWrapping="Wrap" />
+            </StackPanel>
+        </Grid>
+    </DockPanel>
+</Window>
