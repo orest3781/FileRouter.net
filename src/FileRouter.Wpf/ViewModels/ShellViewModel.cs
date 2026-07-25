@@ -267,6 +267,12 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private bool _dashboardVisible;
     public bool DashboardVisible { get => _dashboardVisible; private set => Set(ref _dashboardVisible, value); }
 
+    /// <summary>True when monitoring is on (Active-only mode, folders
+    /// configured) and nothing needs attention — the dashboard says so
+    /// instead of silently vanishing the whole section.</summary>
+    private bool _allQuiet;
+    public bool AllQuiet { get => _allQuiet; private set => Set(ref _allQuiet, value); }
+
     /// <summary>The config's tile_visibility normalized: unknown values (hand
     /// edits, future keys) read as the default so the dashboard never
     /// silently disappears on a typo.</summary>
@@ -319,6 +325,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
         MonitorTitle = _cfg.MonitorTitle;
         DashboardVisible = Screen == Screen.Ready && statuses.Count > 0;
+        AllQuiet = Screen == Screen.Ready && statuses.Count == 0
+            && _cfg.WatchFolders.Count > 0 && TileMode == "active";
 
         InboxAlerting = inboxScan.Matching
             .Any(f => FolderMonitor.IsAlerting(Path.GetFileName(f), _cfg.AlertTexts));
@@ -491,6 +499,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         HideLastAction();
         // hide the dashboard while filing
         DashboardVisible = false;
+        AllQuiet = false;
         StopFlash();
         ApplyFlashAll();
         await RefreshCompleterAsync();

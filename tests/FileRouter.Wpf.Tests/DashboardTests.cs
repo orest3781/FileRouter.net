@@ -155,6 +155,42 @@ public class DashboardTests
     }
 
     [Fact]
+    public void QuietMonitoringSaysSoInsteadOfVanishing()
+    {
+        using var fx = WithWatchFolder(out var watched);
+        fx.Shell.Initialize();
+        Assert.True(fx.Shell.AllQuiet);              // folders watched, nothing up
+        Assert.False(fx.Shell.DashboardVisible);
+
+        File.WriteAllText(Path.Combine(watched, "a.pdf"), "x");
+        fx.Shell.OnFolderActivity();
+        Assert.False(fx.Shell.AllQuiet);             // a tile took over
+        Assert.True(fx.Shell.DashboardVisible);
+    }
+
+    [Fact]
+    public void AllQuietOnlyAppliesToActiveOnlyMonitoring()
+    {
+        using var bare = new ShellFixture();         // no watch folders at all
+        bare.Shell.Initialize();
+        Assert.False(bare.Shell.AllQuiet);
+
+        using var hidden = WithWatchFolder(out _, cfg => cfg.TileVisibility = "hidden");
+        hidden.Shell.Initialize();
+        Assert.False(hidden.Shell.AllQuiet);         // the user asked for silence
+
+        using var all = WithWatchFolder(out _, cfg => cfg.TileVisibility = "all");
+        all.Shell.Initialize();
+        Assert.False(all.Shell.AllQuiet);            // the zero-count tile shows instead
+
+        using var filing = WithWatchFolder(out _);
+        filing.AddInboxFile();
+        filing.Shell.Initialize();
+        filing.Shell.StartProcessing();
+        Assert.False(filing.Shell.AllQuiet);         // never while filing
+    }
+
+    [Fact]
     public void AllModeKeepsAnEmptyFolderOnTheDashboard()
     {
         using var fx = WithWatchFolder(out _, cfg => cfg.TileVisibility = "all");

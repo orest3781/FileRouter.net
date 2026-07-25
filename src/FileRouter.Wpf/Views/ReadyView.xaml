@@ -65,6 +65,18 @@
             <Rectangle Height="1" Fill="{DynamicResource Theme.Border}" Margin="0,14,0,0" />
         </StackPanel>
 
+        <!-- monitoring is on and nothing needs attention — say so instead of
+             silently vanishing the section -->
+        <StackPanel Visibility="{Binding AllQuiet, Converter={StaticResource BoolToVis}}">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
+                <TextBlock Style="{StaticResource Icon}" Text="&#xE73E;" FontSize="12"
+                           Foreground="{DynamicResource Theme.Success}" Margin="0,0,7,0" />
+                <TextBlock Text="All monitored folders are quiet"
+                           Style="{StaticResource SubtleText}" />
+            </StackPanel>
+            <Rectangle Height="1" Fill="{DynamicResource Theme.Border}" Margin="0,12,0,0" />
+        </StackPanel>
+
         <!-- the inbox: one big number over the Start button. A real button —
              clicking it opens the inbox folder (keyboard/screen-reader too) -->
         <Button Command="{Binding OpenInboxCommand}"
