@@ -7,7 +7,7 @@ using FileRouter.Wpf.Windows;
 public static class DialogCheck
 {
     public static int Run() => SmokeUi.RunSta(Drive,
-        "DIALOGS OK — all seven construct cleanly",
+        "DIALOGS OK — all eight construct cleanly",
         "DIALOG FAIL:");
 
     private static List<string> Drive()
@@ -35,6 +35,10 @@ public static class DialogCheck
         Check("Settings", () => new SettingsWindow(new SettingsViewModel(new Config(), dialogs)));
         Check("LabelMaker", () => new LabelMakerWindow(
             new LabelMakerViewModel(new Config(), () => { }, dialogs)));
+        Check("PrintPreview", () => new PrintPreviewWindow(
+            FileRouter.Wpf.Views.LabelPrinting.BuildDocument(
+                BoxLabels.Batch("ABCD", 1, 12, new DateTime(2026, 7, 25), 30)),
+            "smoke", _ => { }));
         Check("Triage", () => new TriageWindow(new List<MatchMerge.MatchResult>(), new[] { "A", "B" }));
 
         using (var history = new History(Path.Combine(dir, "history.sqlite")))

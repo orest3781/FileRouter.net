@@ -79,6 +79,32 @@ public sealed class LabelPreviewControl : FrameworkElement
     }
 }
 
+/// <summary>Builds the US-letter print document for a batch — used by both
+/// the print-preview window and the actual print call, so what the preview
+/// shows is the exact document that spools.</summary>
+internal static class LabelPrinting
+{
+    public static System.Windows.Documents.FixedDocument BuildDocument(
+        IReadOnlyList<BoxLabels.Item> items)
+    {
+        const double pageW = BoxLabels.PageWidthPt * 96 / 72;    // 816 DIPs
+        const double pageH = BoxLabels.PageHeightPt * 96 / 72;   // 1056 DIPs
+        var doc = new System.Windows.Documents.FixedDocument();
+        doc.DocumentPaginator.PageSize = new Size(pageW, pageH);
+        for (var i = 0; i < items.Count; i += BoxLabels.PerSheet)
+        {
+            var sheet = items.Skip(i).Take(BoxLabels.PerSheet).ToList();
+            var page = new System.Windows.Documents.FixedPage
+            { Width = pageW, Height = pageH, Background = Brushes.White };
+            page.Children.Add(new LabelSheetElement(sheet) { Width = pageW, Height = pageH });
+            var content = new System.Windows.Documents.PageContent();
+            ((System.Windows.Markup.IAddChild)content).AddChild(page);
+            doc.Pages.Add(content);
+        }
+        return doc;
+    }
+}
+
 /// <summary>One printed sheet (up to 10 labels) for the in-app print path.
 /// Sized in DIPs (96/in), drawn in points via a 96/72 scale — WPF printing
 /// maps DIPs to physical inches 1:1, so scale is always exactly 100%.</summary>
