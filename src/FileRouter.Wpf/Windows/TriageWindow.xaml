@@ -11,9 +11,11 @@
             <ColumnDefinition Width="5" />
             <ColumnDefinition Width="440" MinWidth="380" />
         </Grid.ColumnDefinitions>
-        <wv2:WebView2 x:Name="Viewer" />
+        <!-- same tab hygiene as the main window: Tab goes straight to the
+             candidate grid and buttons, never into the browser -->
+        <wv2:WebView2 x:Name="Viewer" Focusable="False" />
         <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-                      ResizeBehavior="PreviousAndNext" />
+                      ResizeBehavior="PreviousAndNext" IsTabStop="False" />
         <DockPanel Grid.Column="2" Margin="12">
             <StackPanel DockPanel.Dock="Top">
                 <TextBlock x:Name="Progress" Style="{StaticResource HeadlineText}" FontSize="20" />

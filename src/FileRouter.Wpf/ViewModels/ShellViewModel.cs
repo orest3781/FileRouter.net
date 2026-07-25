@@ -829,14 +829,18 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         return true;
     }
 
-    /// <summary>Shift+Tab: drop the last completed word (same boundary).</summary>
-    internal void DropLastWord()
+    /// <summary>Shift+Tab: drop the last completed word (same boundary).
+    /// False when the box is already empty — the keystroke then traverses
+    /// focus backward normally instead of being swallowed.</summary>
+    internal bool DropLastWord()
     {
+        if (TypedName.Length == 0) return false;
         var sep = WordBoundary;
         var t = TypedName;
         if (t.EndsWith(sep, StringComparison.Ordinal)) t = t[..^sep.Length];
         var i = t.LastIndexOf(sep, StringComparison.Ordinal);
         TypedName = i < 0 ? "" : t[..i];
+        return true;
     }
 
     // ------------------------------------------------------------- helpers

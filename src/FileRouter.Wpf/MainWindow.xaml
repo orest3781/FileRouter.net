@@ -109,11 +109,16 @@
                 <ColumnDefinition x:Name="SplitterCol" Width="5" />
                 <ColumnDefinition x:Name="PanelCol" Width="430" MinWidth="370" />
             </Grid.ColumnDefinitions>
-            <wv2:WebView2 x:Name="Viewer" Grid.Column="0" />
+            <!-- data-entry tab order: the browser would trap Tab in the PDF
+                 toolbar, and the splitter/ScrollViewer are focus-ring noise —
+                 Tab goes menu → name box → buttons. Mouse still focuses the
+                 viewer for keyboard scrolling inside the PDF. -->
+            <wv2:WebView2 x:Name="Viewer" Grid.Column="0" Focusable="False" />
             <GridSplitter x:Name="Split" Grid.Column="1" HorizontalAlignment="Stretch"
-                          VerticalAlignment="Stretch" ResizeBehavior="PreviousAndNext" />
+                          VerticalAlignment="Stretch" ResizeBehavior="PreviousAndNext"
+                          IsTabStop="False" />
             <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled"
+                          HorizontalScrollBarVisibility="Disabled" Focusable="False"
                           Background="{DynamicResource Theme.WindowBg}">
                 <Grid Margin="16,12">
                     <views:ReadyView Visibility="{Binding IsReady, Converter={StaticResource BoolToVis}}" />

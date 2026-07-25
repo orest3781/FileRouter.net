@@ -331,12 +331,16 @@ public class FilingLoopTests
         Assert.Equal("SMITH-JOHN-MICHAEL", fx.Shell.TypedName);
         Assert.False(fx.Shell.CompleteNextWord());   // nothing left to add
 
-        fx.Shell.DropLastWord();
+        Assert.True(fx.Shell.DropLastWord());
         Assert.Equal("SMITH-JOHN", fx.Shell.TypedName);
-        fx.Shell.DropLastWord();
+        Assert.True(fx.Shell.DropLastWord());
         Assert.Equal("SMITH", fx.Shell.TypedName);
-        fx.Shell.DropLastWord();
+        Assert.True(fx.Shell.DropLastWord());
         Assert.Equal("", fx.Shell.TypedName);
+
+        // an empty box has nothing to drop — Shift+Tab then moves focus
+        // backward instead of being swallowed
+        Assert.False(fx.Shell.DropLastWord());
     }
 
     [Fact]

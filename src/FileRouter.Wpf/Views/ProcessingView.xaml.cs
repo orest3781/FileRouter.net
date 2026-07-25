@@ -44,9 +44,11 @@ public partial class ProcessingView : UserControl
                 }
                 break;
             case Key.Tab when shift:
-                _shell.DropLastWord();
-                NameBox.CaretIndex = NameBox.Text.Length;
-                e.Handled = true;
+                if (_shell.DropLastWord())
+                {
+                    NameBox.CaretIndex = NameBox.Text.Length;
+                    e.Handled = true;
+                }
                 break;
             case Key.Enter:
                 _shell.OnEnter();

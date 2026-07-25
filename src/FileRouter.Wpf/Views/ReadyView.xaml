@@ -5,7 +5,7 @@
         <!-- monitored folders: grid of cards at the top (Python parity) -->
         <StackPanel Visibility="{Binding DashboardVisible, Converter={StaticResource BoolToVis}}">
             <TextBlock Text="{Binding MonitorTitle}" FontWeight="SemiBold" Margin="0,0,0,6" />
-            <ItemsControl ItemsSource="{Binding Tiles}">
+            <ItemsControl ItemsSource="{Binding Tiles}" Focusable="False">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <UniformGrid Columns="2" />
