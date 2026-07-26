@@ -162,10 +162,15 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="16,8">
                         <TextBlock Text="Naming" FontWeight="Bold" Margin="0,0,0,10" />
-                        <RadioButton Content="Insert at the -- — the typed name replaces the first -- in the filename"
-                                     IsChecked="{Binding InsertMode}" />
-                        <RadioButton Content="Full replace — the typed name becomes the whole filename"
-                                     IsChecked="{Binding InsertMode, Converter={StaticResource InvertBool}}" />
+                        <!-- before → after beats prose: "insert" and "replace"
+                             in one sentence read as a contradiction -->
+                        <RadioButton IsChecked="{Binding InsertMode}"
+                                     Content='Insert at the "--"   ·   20240115--12345.pdf  →  20240115-Smith John-12345.pdf' />
+                        <RadioButton IsChecked="{Binding InsertMode, Converter={StaticResource InvertBool}}"
+                                     Content='Full replace   ·   20240115--12345.pdf  →  Smith John.pdf' />
+                        <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap"
+                                   Margin="22,2,0,0"
+                                   Text='Either way, the inbox only picks up PDFs with "--" in the name — anything else shows as "ignored" on the Ready screen.' />
                         <!-- one live example tying mode + UPPERCASE + separator together -->
                         <Border Background="{DynamicResource Theme.Surface}"
                                 BorderBrush="{DynamicResource Theme.Border}" BorderThickness="1"
@@ -381,7 +386,8 @@
                                           ItemsSource="{x:Static vm:SettingsViewModel.ModeChoices}"
                                           SelectedValuePath="Key"
                                           SelectedValue="{Binding NamingMode}"
-                                          ItemTemplate="{StaticResource KvpValueTemplate}" />
+                                          ItemTemplate="{StaticResource KvpValueTemplate}"
+                                          ToolTip="Overrides the Filing tab's naming mode for this destination only" />
                             </Grid>
 
                             <Grid Style="{StaticResource FieldRow}">

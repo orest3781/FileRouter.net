@@ -282,8 +282,8 @@ public sealed class SettingsViewModel : ObservableObject
 
     public static readonly KeyValuePair<string, string>[] ModeChoices =
     {
-        new("", "(session default)"),
-        new("insert", "Insert at the --"),
+        new("", "(use the Filing setting)"),
+        new("insert", "Insert at the \"--\""),
         new("replace", "Full replace"),
     };
 
@@ -651,7 +651,9 @@ public sealed class SettingsViewModel : ObservableObject
                     "20240115--12345.pdf", name,
                     routeMode: null, globalMode: InsertMode ? "insert" : "replace",
                     routeSuffix: "", appendSuffix: false, exists: _ => false);
-                return $"A file typed as \"Smith John\" files as:  {result.Filename}";
+                // before → after, with the typed name in the middle — the
+                // transformation is the whole story
+                return $"20240115--12345.pdf  +  \"Smith John\"  →  {result.Filename}";
             }
             catch (ArgumentException ex)
             {
