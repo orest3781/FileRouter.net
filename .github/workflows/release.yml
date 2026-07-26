@@ -15,6 +15,10 @@ permissions:
 jobs:
   release:
     runs-on: windows-latest
+    env:
+      # the secrets context isn't allowed in step-level if conditions —
+      # surface "is signing configured" through job env instead
+      HAS_SIGNING: ${{ secrets.AZURE_TENANT_ID != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -67,7 +71,7 @@ jobs:
       # (client id/secret) with the Trusted Signing Certificate Profile
       # Signer role. Docs: https://learn.microsoft.com/azure/trusted-signing/
       - name: Sign the exes (when signing is configured)
-        if: ${{ startsWith(github.ref, 'refs/tags/') && secrets.AZURE_TENANT_ID != '' }}
+        if: ${{ startsWith(github.ref, 'refs/tags/') && env.HAS_SIGNING == 'true' }}
         uses: azure/trusted-signing-action@v2
         with:
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
