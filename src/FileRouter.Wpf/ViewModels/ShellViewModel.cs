@@ -368,8 +368,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// only for folders holding files or in error), the inbox alert state, and
     /// (re)start the 600 ms flash if anything is alerting. Statuses arrive
     /// pre-gathered off-thread. Tiles are only REBUILT when something actually
-    /// changed — the 30 s poll must not replay the fade-in on identical tiles
-    /// (the "blink").</summary>
+    /// changed — the backstop poll must not replay the fade-in on identical
+    /// tiles (the "blink").</summary>
     private void RefreshDashboard(Scanner.ScanResult inboxScan,
         List<FolderMonitor.FolderStatus>? swept)
     {
@@ -400,8 +400,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
         if (anyAlert && _cfg.FlashAlerts)
         {
-            // don't reset a running flash — the poll would visibly stutter
-            // the blink phase every 30 seconds
+            // don't reset a running flash — every poll would otherwise
+            // visibly stutter the blink phase
             if (!FlashRunning)
             {
                 FlashRunning = true;

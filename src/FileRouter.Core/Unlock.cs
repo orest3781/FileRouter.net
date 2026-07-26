@@ -36,7 +36,7 @@ public static class Unlock
         // encryption state, checked without a password
         try
         {
-            using var probe = PdfReader.Open(src, PdfDocumentOpenMode.InformationOnly);
+            using var probe = PdfReader.Open(src, PdfDocumentOpenMode.Import);
             if (!probe.SecuritySettings.IsEncrypted)
                 return new("not_encrypted", src, Message: "This PDF isn't password-protected.");
         }
@@ -120,12 +120,14 @@ public static class Unlock
 
     /// <summary>Reopen the saved copy and force every page to load. "" if it's
     /// a clean, open PDF, else a short problem — catches a decryption that
-    /// produced garbage.</summary>
+    /// produced garbage. Import mode (not InformationOnly, which PdfSharp
+    /// documents as unimplemented) is what actually parses the page objects,
+    /// so touching each page below is a real check rather than a no-op.</summary>
     private static string VerifyReadable(string path)
     {
         try
         {
-            using var doc = PdfReader.Open(path, PdfDocumentOpenMode.InformationOnly);
+            using var doc = PdfReader.Open(path, PdfDocumentOpenMode.Import);
             if (doc.SecuritySettings.IsEncrypted) return "the copy is still password-protected";
             if (doc.PageCount == 0) return "the copy has no readable pages";
             for (var i = 0; i < doc.PageCount; i++) _ = doc.Pages[i];

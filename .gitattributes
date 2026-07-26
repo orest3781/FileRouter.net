@@ -1,0 +1,13 @@
+# Declare binary content explicitly. Without this, git falls back to guessing
+# from NUL bytes in the first 8k — which the shipped .wav assets happen to pass
+# and a small all-ASCII PDF does NOT. With core.autocrlf=true (the Windows
+# default) a misclassified file gets its LFs rewritten to CRLF on checkout,
+# which shifts every byte offset in a PDF xref table and silently corrupts it.
+# Guessing right today is not a guarantee; declare it.
+*.pdf     binary
+*.wav     binary
+*.png     binary
+*.ico     binary
+*.sqlite  binary
+*.xlsx    binary
+*.zip     binary

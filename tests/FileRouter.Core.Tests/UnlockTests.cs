@@ -31,7 +31,7 @@ public class UnlockTests : IDisposable
 
     private static bool NeedsPassword(string path)
     {
-        try { using var _ = PdfReader.Open(path, PdfDocumentOpenMode.InformationOnly); return false; }
+        try { using var _ = PdfReader.Open(path, PdfDocumentOpenMode.Import); return false; }
         catch { return true; }
     }
 

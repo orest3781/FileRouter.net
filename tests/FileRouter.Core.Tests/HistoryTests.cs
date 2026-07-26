@@ -64,7 +64,7 @@ public class HistoryTests : IDisposable
     }
 
     [Fact]
-    public void ConcurrentWritersDoNotError()
+    public async Task ConcurrentWritersDoNotError()
     {
         NewHistory("shared.sqlite").Dispose();  // create schema
         var path = Path.Combine(_dir, "shared.sqlite");
@@ -79,7 +79,7 @@ public class HistoryTests : IDisposable
             }
             catch (Exception ex) { errors.Add(ex.Message); }
         })).ToArray();
-        Task.WaitAll(tasks);
+        await Task.WhenAll(tasks);
 
         Assert.Empty(errors);
         using var check = new History(path);

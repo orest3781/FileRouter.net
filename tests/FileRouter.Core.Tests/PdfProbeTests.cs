@@ -42,7 +42,7 @@ public class PdfProbeTests : IDisposable
             output.Save(outPath);
         }
         // the copy opens with NO password and isn't encrypted
-        using var check = PdfReader.Open(outPath, PdfDocumentOpenMode.InformationOnly);
+        using var check = PdfReader.Open(outPath, PdfDocumentOpenMode.Import);
         Assert.False(check.SecuritySettings.IsEncrypted);
     }
 }

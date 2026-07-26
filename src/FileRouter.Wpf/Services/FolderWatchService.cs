@@ -2,8 +2,10 @@ namespace FileRouter.Wpf.Services;
 
 /// <summary>Live folder monitoring with the exact semantics the WinForms app
 /// proved out: any Created/Deleted/Renamed restarts a 1.5 s debounce (lets a
-/// file finish downloading before we rescan), and a 30 s poll backstops network
-/// shares where FileSystemWatcher change notifications never fire (SMB).
+/// file finish downloading before we rescan), and a periodic poll backstops
+/// network shares where FileSystemWatcher change notifications never fire
+/// (SMB). The poll cadence is the config's poll_seconds — see
+/// <see cref="FileRouter.Core.Config.PollSeconds"/>.
 ///
 /// <see cref="Activity"/> is raised on the provided SynchronizationContext
 /// (the UI thread in the app) or inline when none is given (tests).</summary>
@@ -18,7 +20,8 @@ public sealed class FolderWatchService : IDisposable
 
     public event Action? Activity;
 
-    public FolderWatchService(int debounceMs = 1500, int pollMs = 30_000,
+    public FolderWatchService(int debounceMs = 1500,
+        int pollMs = FileRouter.Core.Config.DefaultPollSeconds * 1000,
         SynchronizationContext? context = null)
     {
         _debounceMs = debounceMs;

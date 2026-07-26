@@ -118,6 +118,20 @@ public class ConfigNullKeysTests : IDisposable
         // normalizing nulls must not weaken real validation
         Assert.Throws<ConfigException>(() => LoadJson("{ \"naming_mode\": \"sideways\" }"));
         Assert.Throws<ConfigException>(() => LoadJson("{ \"poll_seconds\": 2 }"));
+        Assert.Throws<ConfigException>(() => LoadJson("{ \"poll_seconds\": 0 }"));
         Assert.Throws<ConfigException>(() => LoadJson("{ \"theme\": \"blue\" }"));
+    }
+
+    [Fact]
+    public void ANullOnANumberOrFlagIsAReadableErrorNotACrash()
+    {
+        // an int/bool can't take a JSON null at all — that has to arrive as a
+        // ConfigException rather than escaping as a JsonException
+        foreach (var key in new[] { "poll_seconds", "ui_font_size", "enter_commits" })
+        {
+            var ex = Assert.Throws<ConfigException>(() => LoadJson($"{{ \"{key}\": null }}"));
+            Assert.Contains("not valid JSON", ex.Message);
+            Assert.Contains(key, ex.Message);   // and it names the offending key
+        }
     }
 }

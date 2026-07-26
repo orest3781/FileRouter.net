@@ -94,11 +94,19 @@ public sealed class Config
     [JsonPropertyName("monitor_title")] public string MonitorTitle { get; set; } = "Monitored folders";
     [JsonPropertyName("flash_alerts")] public bool FlashAlerts { get; set; } = true;
 
+    /// <summary>The poll cadence used when config.json doesn't say otherwise.
+    /// Referenced by the watcher and the Settings screen so there is exactly
+    /// one place this number lives.</summary>
+    public const int DefaultPollSeconds = 15;
+
+    public const int MinPollSeconds = 5;
+    public const int MaxPollSeconds = 600;
+
     /// <summary>How often (seconds) to re-check monitored folders and backstop
     /// SMB-dropped inbox notifications. The inbox/set-aside folders are also
     /// file-watched (near-instant); this poll is what catches watch-folder
     /// arrivals, so lower = snappier alerts, higher = gentler on a share.</summary>
-    [JsonPropertyName("poll_seconds")] public int PollSeconds { get; set; } = 15;
+    [JsonPropertyName("poll_seconds")] public int PollSeconds { get; set; } = DefaultPollSeconds;
 
     /// <summary>Monitored-folder tile visibility: "active" (tiles appear only
     /// while a folder holds files — the default), "all" (every tile stays,
@@ -169,9 +177,10 @@ public sealed class Config
         if (cfg.Theme is not ("auto" or "light" or "dark"))
             throw new ConfigException(
                 $"theme must be one of auto/light/dark, got \"{cfg.Theme}\"");
-        if (cfg.PollSeconds is < 5 or > 600)
+        if (cfg.PollSeconds is < MinPollSeconds or > MaxPollSeconds)
             throw new ConfigException(
-                $"poll_seconds must be 5-600, got {cfg.PollSeconds}");
+                $"poll_seconds must be {MinPollSeconds}-{MaxPollSeconds}, " +
+                $"got {cfg.PollSeconds}");
         return cfg;
     }
 
@@ -187,6 +196,10 @@ public sealed class Config
         Deferred ??= "";
         NamesFile ??= "names.txt";
         HistoryDb ??= "history.sqlite";
+        // Value-typed keys need nothing here: a JSON null on an int or bool
+        // can't be deserialized at all, so it already surfaces as a readable
+        // ConfigException. Normalizing them would only mask an explicit
+        // out-of-range 0 that validation is supposed to reject.
         NamingMode ??= "insert";
         Sort ??= "size_desc";
         MonitorTitle ??= "Monitored folders";
