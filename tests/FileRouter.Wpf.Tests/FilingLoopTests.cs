@@ -348,6 +348,43 @@ public class FilingLoopTests
     }
 
     [Fact]
+    public async Task ReplaceModeSessionsTakeAnyPdf()
+    {
+        var fx = new ShellFixture(cfg => cfg.NamingMode = "replace");
+        using var _ = fx;
+        fx.AddInboxFile("scan_001.pdf");            // no "--" marker
+        fx.Shell.Initialize();
+        Assert.Equal("1", fx.Shell.BigCount);       // picked up anyway
+
+        fx.Shell.StartProcessing();
+        fx.Shell.TypedName = "WALKER SUE";
+        await fx.Shell.OnRouteAsync(0);
+        Assert.True(File.Exists(Path.Combine(fx.RouteDir, "WALKER SUE.pdf")));
+    }
+
+    [Fact]
+    public async Task InsertOverrideOnAMarkerlessFileFailsReadably()
+    {
+        // global replace queues plain pdfs; a route that overrides to insert
+        // can't splice them — the commit must warn and leave the file put
+        var fx = new ShellFixture(cfg =>
+        {
+            cfg.NamingMode = "replace";
+            cfg.Routes[0].NamingMode = "insert";
+        });
+        using var _ = fx;
+        var src = fx.AddInboxFile("scan_001.pdf");
+        fx.Shell.Initialize();
+        fx.Shell.StartProcessing();
+
+        fx.Shell.TypedName = "WALKER SUE";
+        await fx.Shell.OnRouteAsync(0);
+
+        Assert.Contains("--", Assert.Single(fx.Dialogs.Warnings).Message);
+        Assert.True(File.Exists(src));              // nothing moved
+    }
+
+    [Fact]
     public void DownArrowTakesTheWholeTopSuggestion()
     {
         var fx = new ShellFixture();

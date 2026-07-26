@@ -65,8 +65,9 @@ workflow tests, builds, zips, and publishes.
   double-press can never mislabel a document.
 - **Two naming modes** — *Insert at the `--`*: any filename containing `--`
   gets the typed name spliced at the first one (`REPORT--1042.pdf` + SMITH
-  JOHN → `REPORT-SMITH JOHN-1042.pdf`); or *Full replace*. Per-route
-  overrides, filename suffixes, and real config-driven hotkeys.
+  JOHN → `REPORT-SMITH JOHN-1042.pdf`); or *Full replace*, which takes
+  **every** PDF in the inbox (insert sessions only pick up `--` files).
+  Per-route overrides, filename suffixes, and real config-driven hotkeys.
 - **Dashboard** — a compact window parked in the corner of your screen that
   sizes itself to its content: a big inbox count, plus a grid of monitored
   folder tiles. A header dropdown picks their visibility: *Active only*

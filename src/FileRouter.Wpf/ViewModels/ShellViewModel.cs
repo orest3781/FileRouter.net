@@ -188,7 +188,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                 var wantStatuses = Screen != Screen.Processing && mode != "hidden";
                 var cfg = _cfg;
                 var snap = await _scheduler.Run(() => new FolderSnapshot(
-                    Scanner.Scan(cfg.Inbox, cfg.Sort),
+                    Scanner.Scan(cfg.Inbox, cfg.Sort, cfg.NamingMode),
                     Scanner.CountFiles(cfg.Deferred),
                     wantStatuses
                         ? FolderMonitor.All(cfg.WatchFolders, cfg.AlertTexts)
@@ -510,7 +510,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         // the scan AND the destination probes (ProbeWritable touches every
         // route folder — a network round trip each) run off the UI thread
         var (scan, problems) = await _scheduler.Run(() =>
-            (Scanner.Scan(cfg.Inbox, cfg.Sort),
+            (Scanner.Scan(cfg.Inbox, cfg.Sort, cfg.NamingMode),
              cfg.Routes.Select(Config.ValidateRoute).ToList()));
         if (Screen == Screen.Processing) return;   // a double Start raced us
         if (scan.Count == 0) { Rescan(); return; }

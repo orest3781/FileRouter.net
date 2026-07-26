@@ -19,8 +19,16 @@ public static class Scanner
         try { return new FileInfo(p).LastWriteTimeUtc.Ticks; } catch { return 0; }
     }
 
+    /// <summary>Which files the inbox picks up: insert mode needs the "--"
+    /// marker to splice into; full replace works on ANY pdf.</summary>
+    public static bool Eligible(string filename, string mode) =>
+        mode == Naming.ModeReplace
+            ? filename.EndsWith(Naming.PdfExt, StringComparison.OrdinalIgnoreCase)
+            : Naming.InboxRegex().IsMatch(filename);
+
     /// <summary>Snapshot the inbox. Never throws — problems come back in Error.</summary>
-    public static ScanResult Scan(string inbox, string sort = "size_desc")
+    public static ScanResult Scan(string inbox, string sort = "size_desc",
+        string mode = Naming.ModeInsert)
     {
         if (string.IsNullOrWhiteSpace(inbox))
             return new ScanResult(Array.Empty<string>(), 0, "No inbox folder is configured yet.");
@@ -37,7 +45,7 @@ public static class Scanner
         }
 
         var matching = files
-            .Where(f => Naming.InboxRegex().IsMatch(System.IO.Path.GetFileName(f)))
+            .Where(f => Eligible(System.IO.Path.GetFileName(f), mode))
             .ToList();
         var ignored = files.Length - matching.Count;
 

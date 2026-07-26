@@ -170,7 +170,7 @@
                                      Content='Full replace   ·   20240115--12345.pdf  →  Smith John.pdf' />
                         <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap"
                                    Margin="22,2,0,0"
-                                   Text='Either way, the inbox only picks up PDFs with "--" in the name — anything else shows as "ignored" on the Ready screen.' />
+                                   Text='Insert mode picks up only PDFs with "--" in the name; Full replace picks up every PDF. Anything else shows as "ignored" on the Ready screen.' />
                         <!-- one live example tying mode + UPPERCASE + separator together -->
                         <Border Background="{DynamicResource Theme.Surface}"
                                 BorderBrush="{DynamicResource Theme.Border}" BorderThickness="1"

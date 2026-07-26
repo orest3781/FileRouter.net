@@ -88,6 +88,26 @@ public class PipelineTests : IDisposable
     }
 
     [Fact]
+    public void ReplaceModeScanTakesEveryPdf()
+    {
+        MakePdf(_inbox, "20240115--1234567890.pdf");
+        MakePdf(_inbox, "scan_001.pdf");                 // no marker — still in
+        File.WriteAllText(Path.Combine(_inbox, "notes.txt"), "x");
+        var r = Scanner.Scan(_inbox, "filename_asc", Naming.ModeReplace);
+        Assert.Equal(2, r.Count);
+        Assert.Equal(1, r.IgnoredCount);                 // only the .txt
+    }
+
+    [Theory]
+    [InlineData("20240115--1234.pdf", "insert", true)]
+    [InlineData("scan_001.pdf", "insert", false)]        // marker required
+    [InlineData("scan_001.pdf", "replace", true)]        // any pdf
+    [InlineData("scan_001.PDF", "replace", true)]        // case-insensitive
+    [InlineData("notes.txt", "replace", false)]           // pdfs only
+    public void EligibilityFollowsTheMode(string name, string mode, bool eligible) =>
+        Assert.Equal(eligible, Scanner.Eligible(name, mode));
+
+    [Fact]
     public void ScanDefaultIsBiggestFirst()
     {
         File.WriteAllBytes(Path.Combine(_inbox, "20240101--1.pdf"), new byte[100]);
