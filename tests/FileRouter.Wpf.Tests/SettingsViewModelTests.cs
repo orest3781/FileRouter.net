@@ -184,6 +184,21 @@ public class SettingsViewModelTests : IDisposable
     }
 
     [Fact]
+    public void PollIntervalLoadsSavesAndValidates()
+    {
+        var vm = new SettingsViewModel(new Config { Inbox = _dir, PollSeconds = 30 }, _dialogs);
+        Assert.Equal("30", vm.PollSecondsText);
+
+        vm.PollSecondsText = "5";
+        Assert.True(vm.TryBuildResult());
+        Assert.Equal(5, vm.Result!.PollSeconds);
+
+        vm.PollSecondsText = "2";                       // below the floor
+        Assert.False(vm.TryBuildResult());
+        Assert.Contains("5 to 600", Assert.Single(_dialogs.Warnings).Message);
+    }
+
+    [Fact]
     public void UnreachableRouteIsAWarningNotAnError()
     {
         var cfg = new Config

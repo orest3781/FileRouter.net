@@ -56,6 +56,13 @@ public sealed class FolderWatchService : IDisposable
         _debounce.Change(_debounceMs, Timeout.Infinite);
     }
 
+    /// <summary>Change the backstop poll period live (Settings adjusted it).</summary>
+    public void SetPollInterval(int pollMs)
+    {
+        if (_disposed) return;
+        _poll.Change(pollMs, pollMs);
+    }
+
     private void RaiseActivity()
     {
         if (_disposed) return;

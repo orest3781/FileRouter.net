@@ -44,8 +44,8 @@ workflow tests, builds, zips, and publishes.
   the app's own code is a few hundred KB.
 - **Network-safe.** The audit database uses a rollback journal (never WAL,
   which corrupts over SMB) with a `busy_timeout`, so several workstations can
-  file into one `history.sqlite` on a share. A 30-second poll backstops folder
-  watching where SMB drops change notifications.
+  file into one `history.sqlite` on a share. A poll (default 15s, configurable
+  5–600) backstops folder watching where SMB drops change notifications.
 - **Never loses a file.** Files are only ever *moved*, never deleted or
   overwritten; a taken name gets a Windows-style ` (2)` counter. Illegal
   filename characters are rejected up front — a colon would otherwise hide a

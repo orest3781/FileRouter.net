@@ -51,7 +51,8 @@ public partial class MainWindow : Window
         };
         _pdf = new WebViewPdfViewer(Viewer);
         Dialogs = new DialogService(this);
-        _watch = new FolderWatchService(context: SynchronizationContext.Current);
+        _watch = new FolderWatchService(pollMs: cfg.PollSeconds * 1000,
+            context: SynchronizationContext.Current);
         Shell = new ShellViewModel(cfg, cfgPath, _pdf,
             new DialogRelay(() => Dialogs), _watch, SynchronizationContext.Current,
             sounds: new SoundService());

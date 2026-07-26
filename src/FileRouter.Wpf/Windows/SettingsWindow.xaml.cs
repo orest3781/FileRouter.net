@@ -76,6 +76,11 @@ public partial class SettingsWindow : Window
         if (sender is Button { Tag: string size }) _vm.UiFontSizeText = size;
     }
 
+    private void OnPollPreset(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string secs }) _vm.PollSecondsText = secs;
+    }
+
     // ------------------------------------------- list drag-and-drop reorder
     private Point _dragStart;
     private object? _dragItem;

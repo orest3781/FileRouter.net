@@ -859,6 +859,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         }
         _session = new Session(cfg, _history);
         await _scheduler.Run(() => _watch.SetFolders(cfg.Inbox, cfg.Deferred));
+        _watch.SetPollInterval(cfg.PollSeconds * 1000);   // adopt a changed cadence live
         Raise(nameof(UppercaseNames));
         Raise(nameof(TileVisibilityIndex));
         Raise(nameof(TileControlsVisible));

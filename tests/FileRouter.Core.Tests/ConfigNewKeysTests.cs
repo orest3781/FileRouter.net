@@ -119,6 +119,24 @@ public class ConfigNewKeysTests : IDisposable
     public void SaneSeparatorsAreAccepted(string sep) =>
         Assert.Equal(sep, LoadJson($"{{ \"word_separator\": \"{sep}\" }}").WordSeparator);
 
+    [Fact]
+    public void PollSecondsDefaultsTo15AndRoundTrips()
+    {
+        Assert.Equal(15, RoundTrip(new Config()).PollSeconds);
+        Assert.Equal(5, RoundTrip(new Config { PollSeconds = 5 }).PollSeconds);
+    }
+
+    [Theory]
+    [InlineData(4)]
+    [InlineData(601)]
+    [InlineData(0)]
+    public void PollSecondsOutOfRangeIsRejected(int secs)
+    {
+        var ex = Assert.Throws<ConfigException>(() =>
+            LoadJson($"{{ \"poll_seconds\": {secs} }}"));
+        Assert.Contains("poll_seconds", ex.Message);
+    }
+
     [Theory]
     [InlineData("auto")]
     [InlineData("light")]

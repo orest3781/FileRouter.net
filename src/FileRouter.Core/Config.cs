@@ -94,6 +94,12 @@ public sealed class Config
     [JsonPropertyName("monitor_title")] public string MonitorTitle { get; set; } = "Monitored folders";
     [JsonPropertyName("flash_alerts")] public bool FlashAlerts { get; set; } = true;
 
+    /// <summary>How often (seconds) to re-check monitored folders and backstop
+    /// SMB-dropped inbox notifications. The inbox/set-aside folders are also
+    /// file-watched (near-instant); this poll is what catches watch-folder
+    /// arrivals, so lower = snappier alerts, higher = gentler on a share.</summary>
+    [JsonPropertyName("poll_seconds")] public int PollSeconds { get; set; } = 15;
+
     /// <summary>Monitored-folder tile visibility: "active" (tiles appear only
     /// while a folder holds files — the default), "all" (every tile stays,
     /// even at zero), or "hidden" (no tiles, and the folder sweep is skipped
@@ -162,6 +168,9 @@ public sealed class Config
         if (cfg.Theme is not ("auto" or "light" or "dark"))
             throw new ConfigException(
                 $"theme must be one of auto/light/dark, got \"{cfg.Theme}\"");
+        if (cfg.PollSeconds is < 5 or > 600)
+            throw new ConfigException(
+                $"poll_seconds must be 5-600, got {cfg.PollSeconds}");
         return cfg;
     }
 

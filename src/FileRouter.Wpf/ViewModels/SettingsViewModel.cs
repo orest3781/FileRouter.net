@@ -402,6 +402,7 @@ public sealed class SettingsViewModel : ObservableObject
         UppercaseNames = current.UppercaseNames;
         WordSeparator = current.WordSeparator;
         FlashAlerts = current.FlashAlerts;
+        PollSecondsText = current.PollSeconds.ToString();
         AlertTextsText = string.Join(Environment.NewLine, current.AlertTexts);
         UiFontFamily = current.UiFontFamily;
         UiFontSizeText = current.UiFontSize == 0 ? "" : current.UiFontSize.ToString();
@@ -747,6 +748,9 @@ public sealed class SettingsViewModel : ObservableObject
     private bool _flashAlerts;
     public bool FlashAlerts { get => _flashAlerts; set => Set(ref _flashAlerts, value); }
 
+    private string _pollSecondsText = "15";
+    public string PollSecondsText { get => _pollSecondsText; set => Set(ref _pollSecondsText, value); }
+
     // ---- sounds ----
     private bool _soundsEnabled;
     public bool SoundsEnabled { get => _soundsEnabled; set => Set(ref _soundsEnabled, value); }
@@ -978,6 +982,9 @@ public sealed class SettingsViewModel : ObservableObject
         if (WordSeparator.Contains(' '))
             errors.Add("The word separator can't contain a space.");
 
+        if (!int.TryParse(PollSecondsText.Trim(), out var poll) || poll is < 5 or > 600)
+            errors.Add("Folder check interval must be a number from 5 to 600 seconds.");
+
         var labels = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var r in Routes)
         {
@@ -1083,6 +1090,8 @@ public sealed class SettingsViewModel : ObservableObject
         cfg.UppercaseNames = UppercaseNames;
         cfg.WordSeparator = WordSeparator;
         cfg.FlashAlerts = FlashAlerts;
+        cfg.PollSeconds = int.TryParse(PollSecondsText.Trim(), out var ps)
+            ? Math.Clamp(ps, 5, 600) : 15;
         cfg.AlertTexts = ParseAlertTerms();
         cfg.Sounds.Enabled = SoundsEnabled;
         cfg.Sounds.NewAlert = NewAlertSound.Spec;
