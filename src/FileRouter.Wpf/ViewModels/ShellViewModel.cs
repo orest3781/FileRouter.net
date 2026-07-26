@@ -24,12 +24,13 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private readonly SynchronizationContext? _uiContext;
     private readonly Func<ThemePalette> _palette;
     private readonly IWorkScheduler _scheduler;
+    private readonly ISoundService _sounds;
     private readonly System.Threading.Timer _flash;
 
     public ShellViewModel(Config cfg, string cfgPath, IPdfViewer viewer,
         IDialogService dialogs, FolderWatchService watch,
         SynchronizationContext? uiContext = null, Func<ThemePalette>? palette = null,
-        IWorkScheduler? scheduler = null)
+        IWorkScheduler? scheduler = null, ISoundService? sounds = null)
     {
         _cfg = cfg;
         _cfgPath = cfgPath;
@@ -39,6 +40,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         _uiContext = uiContext;
         _palette = palette ?? (() => ThemeManager.Current);
         _scheduler = scheduler ?? new TaskWorkScheduler();
+        _sounds = sounds ?? new NullSoundService();
         _flash = new System.Threading.Timer(_ =>
         {
             if (_uiContext is null) FlashTick();
@@ -48,6 +50,11 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         {
             if (_uiContext is null) HideLastAction();
             else _uiContext.Post(_ => HideLastAction(), null);
+        });
+        _toastTimer = new System.Threading.Timer(_ =>
+        {
+            if (_uiContext is null) HideToast();
+            else _uiContext.Post(_ => HideToast(), null);
         });
 
         var dbPath = ResolvePath(cfg.HistoryDb, cfgPath);
@@ -64,6 +71,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         RescanCommand = new RelayCommand(Rescan);
         OpenDeferredCommand = new RelayCommand(() => OpenFolder(_cfg.Deferred));
         OpenInboxCommand = new RelayCommand(() => OpenFolder(_cfg.Inbox));
+        OpenToastCommand = new RelayCommand(() => { OpenFolder(_toastFolder); HideToast(); });
         RouteCommand = new AsyncRelayCommand<int>(OnRouteAsync);
         SkipCommand = new AsyncRelayCommand(OnSkipAsync);
         UndoCommand = new AsyncRelayCommand(OnUndoAsync, () => _session.CanUndo);
@@ -137,6 +145,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public RelayCommand RescanCommand { get; }
     public RelayCommand OpenDeferredCommand { get; }
     public RelayCommand OpenInboxCommand { get; }
+    public RelayCommand OpenToastCommand { get; }
 
     /// <summary>Called once by the window after the viewer init attempt:
     /// start watching and take the first scan.</summary>
@@ -163,7 +172,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     // enumeration can take seconds, and a blocked UI thread here doesn't just
     // freeze the app — it starves the global mouse hook.
     private sealed record FolderSnapshot(
-        Scanner.ScanResult Scan, int DeferredCount,
+        Scanner.ScanResult Scan, Scanner.DeferredInfo Deferred,
         List<FolderMonitor.FolderStatus>? Statuses);
 
     private bool _refreshBusy;
@@ -189,7 +198,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                 var cfg = _cfg;
                 var snap = await _scheduler.Run(() => new FolderSnapshot(
                     Scanner.Scan(cfg.Inbox, cfg.Sort, cfg.NamingMode),
-                    Scanner.CountFiles(cfg.Deferred),
+                    Scanner.DeferredSummary(cfg.Deferred),
                     wantStatuses
                         ? FolderMonitor.All(cfg.WatchFolders, cfg.AlertTexts)
                             .Where(s => mode == "all" || s.HasFiles || s.Error.Length > 0)
@@ -203,7 +212,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     private void ApplySnapshot(FolderSnapshot snap, bool showErrors)
     {
-        ApplyDeferredCount(snap.DeferredCount);
+        ApplyDeferred(snap.Deferred);
         if (snap.Scan.Error.Length > 0 && !showErrors && Screen != Screen.Ready)
             return;   // a transient share hiccup must not wipe the screen
 
@@ -249,17 +258,23 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         RefreshDashboard(scan, snap.Statuses ?? new List<FolderMonitor.FolderStatus>());
     }
 
-    private void ApplyDeferredCount(int count)
+    private void ApplyDeferred(Scanner.DeferredInfo info)
     {
-        DeferredAlert = count > 0
-            ? $"⚠ {count} set-aside file{(count == 1 ? "" : "s")} waiting — click to open"
-            : "";
+        if (info.Count == 0) { DeferredAlert = ""; return; }
+        var age = info.OldestAgeDays switch
+        {
+            0 => "",
+            1 => "   ·   oldest 1 day",
+            var d => $"   ·   oldest {d} days",
+        };
+        DeferredAlert = $"⚠ {info.Count} set-aside file{(info.Count == 1 ? "" : "s")} waiting"
+            + age + "   —   click to open";
     }
 
     private async Task RefreshDeferredAsync()
     {
         var deferred = _cfg.Deferred;
-        ApplyDeferredCount(await _scheduler.Run(() => Scanner.CountFiles(deferred)));
+        ApplyDeferred(await _scheduler.Run(() => Scanner.DeferredSummary(deferred)));
     }
 
     // ----------------------------------------------------------- dashboard
@@ -350,6 +365,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             .Any(f => FolderMonitor.IsAlerting(Path.GetFileName(f), _cfg.AlertTexts));
 
         var anyAlert = InboxAlerting || statuses.Any(s => s.Alerting);
+        HasActiveAlert = anyAlert;
+        DetectNewAlerts(inboxScan, statuses);
+
         if (anyAlert && _cfg.FlashAlerts)
         {
             // don't reset a running flash — the poll would visibly stutter
@@ -365,6 +383,93 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             StopFlash();
         }
         ApplyFlashAll();
+    }
+
+    // ------------------------------------------------------------ new alerts
+    // A per-file memory: which alerting files we've already reacted to. The
+    // sound, the toast, and the window flash all fire ONCE per newly-arrived
+    // alerting file — never on the 30 s poll re-seeing the same one.
+    private readonly HashSet<string> _seenAlerts = new();
+    private bool _alertsSeeded;
+
+    /// <summary>True while any alerting file exists — drives the taskbar badge.</summary>
+    private bool _hasActiveAlert;
+    public bool HasActiveAlert { get => _hasActiveAlert; private set => Set(ref _hasActiveAlert, value); }
+
+    /// <summary>Raised when a genuinely new alerting file appears (not on
+    /// startup, not on re-poll) — the window flashes its taskbar button.</summary>
+    public event Action? AlertArrived;
+
+    private sealed record AlertItem(string Key, string Label, string File, string Folder);
+
+    private void DetectNewAlerts(Scanner.ScanResult inboxScan,
+        List<FolderMonitor.FolderStatus> statuses)
+    {
+        var current = new List<AlertItem>();
+        foreach (var s in statuses.Where(s => s.Alerting))
+            foreach (var m in s.Matches)
+                current.Add(new AlertItem($"{s.Path}\0{m}", s.Label, Path.GetFileName(m), s.Path));
+        foreach (var f in inboxScan.Matching)
+        {
+            var nm = Path.GetFileName(f);
+            if (FolderMonitor.IsAlerting(nm, _cfg.AlertTexts))
+                current.Add(new AlertItem($"inbox\0{nm}", "the inbox", nm, _cfg.Inbox));
+        }
+
+        var live = current.Select(a => a.Key).ToHashSet();
+        // first sweep after launch/rescan: adopt what's already there silently —
+        // the red tiles are visible; the chime is for things that arrive later
+        if (_alertsSeeded)
+        {
+            var fresh = current.Where(a => !_seenAlerts.Contains(a.Key)).ToList();
+            if (fresh.Count > 0) RaiseNewAlerts(fresh);
+        }
+        _alertsSeeded = true;
+        _seenAlerts.Clear();
+        foreach (var k in live) _seenAlerts.Add(k);
+    }
+
+    private void RaiseNewAlerts(List<AlertItem> fresh)
+    {
+        if (_cfg.Sounds.Enabled) _sounds.Play(SoundEvent.NewAlert, _cfg.Sounds.NewAlert);
+
+        var first = fresh[0];
+        ShowToast(
+            fresh.Count == 1 ? "Alert" : $"{fresh.Count} new alerts",
+            fresh.Count == 1 ? $"{first.File} — in {first.Label}" : $"newest: {first.File}",
+            first.Folder);
+        AlertArrived?.Invoke();
+    }
+
+    // ---------------------------------------------------------------- toast
+    // A transient bottom-corner card when a new alert arrives — reaches you
+    // even if the dashboard tile is scrolled off or the window is unfocused.
+    internal const int ToastMs = 7000;
+    private readonly System.Threading.Timer _toastTimer;
+    private string _toastFolder = "";
+
+    private bool _toastVisible;
+    public bool ToastVisible { get => _toastVisible; private set => Set(ref _toastVisible, value); }
+
+    private string _toastText = "";
+    public string ToastText { get => _toastText; private set => Set(ref _toastText, value); }
+
+    private string _toastDetail = "";
+    public string ToastDetail { get => _toastDetail; private set => Set(ref _toastDetail, value); }
+
+    private void ShowToast(string text, string detail, string folder)
+    {
+        ToastText = text;
+        ToastDetail = detail;
+        _toastFolder = folder;
+        ToastVisible = true;
+        _toastTimer.Change(ToastMs, Timeout.Infinite);
+    }
+
+    internal void HideToast()
+    {
+        ToastVisible = false;
+        _toastTimer.Change(Timeout.Infinite, Timeout.Infinite);
     }
 
     internal void FlashTick()
@@ -563,6 +668,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             + (_session.Vanished > 0 ? $", {_session.Vanished} vanished" : "");
         StatusLine = "";   // mid-session notes don't belong under the summary
         RaiseUndoState();
+        if (_cfg.Sounds.Enabled) _sounds.Play(SoundEvent.Filed, _cfg.Sounds.Filed);
     }
 
     private void RaiseUndoState()
@@ -606,6 +712,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             }
             catch (CommitError ex)
             {
+                if (_cfg.Sounds.Enabled) _sounds.Play(SoundEvent.Error, _cfg.Sounds.Error);
                 _dialogs.Warn(ex.Message, "Sendu — couldn't file it");
                 await LoadCurrentAsync();   // reload the same doc; nothing moved
                 return;
@@ -630,11 +737,15 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                 if (outcome.Vanished)
                     StatusLine = "That file disappeared from the inbox — logged and moved on.";
                 else
+                {
                     ShowLastAction("✓  Set aside for later",
                         Path.GetFileName(outcome.NewPath!), _palette().Warning);
+                    if (_cfg.Sounds.Enabled) _sounds.Play(SoundEvent.SetAside, _cfg.Sounds.SetAside);
+                }
             }
             catch (CommitError ex)
             {
+                if (_cfg.Sounds.Enabled) _sounds.Play(SoundEvent.Error, _cfg.Sounds.Error);
                 _dialogs.Warn(ex.Message, "Sendu — set-aside failed");
             }
             await RefreshDeferredAsync();
@@ -920,6 +1031,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         _watch.Activity -= OnFolderActivity;
         _flash.Dispose();
         _lastActionTimer.Dispose();
+        _toastTimer.Dispose();
         _history.Dispose();
     }
 }

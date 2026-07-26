@@ -120,6 +120,23 @@ public class PipelineTests : IDisposable
     public void ScanMissingFolderIsMessageNotCrash() =>
         Assert.Contains("does not exist", Scanner.Scan(@"Z:\nope\gone").Error);
 
+    [Fact]
+    public void DeferredSummaryCountsAndAgesTheOldest()
+    {
+        Assert.Equal(new Scanner.DeferredInfo(0, 0), Scanner.DeferredSummary(_inbox));
+
+        var old = MakePdf(_inbox, "20240101--old.pdf");
+        MakePdf(_inbox, "20240102--new.pdf");
+        File.SetLastWriteTimeUtc(old, DateTime.UtcNow.AddDays(-4));
+        var info = Scanner.DeferredSummary(_inbox, DateTime.Now);
+        Assert.Equal(2, info.Count);
+        Assert.Equal(4, info.OldestAgeDays);
+    }
+
+    [Fact]
+    public void DeferredSummaryMissingFolderIsZeroNotCrash() =>
+        Assert.Equal(0, Scanner.DeferredSummary(@"Z:\nope\gone").Count);
+
     // ---- Commit ----
     [Fact]
     public void CommitMovesAndRenames()

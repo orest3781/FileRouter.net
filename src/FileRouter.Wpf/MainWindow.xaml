@@ -11,6 +11,7 @@
         <KeyBinding Key="Z" Modifiers="Ctrl+Shift" Command="{Binding UndoCommand}" />
         <KeyBinding Key="Escape" Command="{Binding StopCommand}" />
     </Window.InputBindings>
+    <Grid>
     <DockPanel>
         <Grid DockPanel.Dock="Top" Background="{DynamicResource Theme.WindowBg}">
             <Grid.ColumnDefinitions>
@@ -172,4 +173,61 @@
             </ScrollViewer>
         </Grid>
     </DockPanel>
+
+        <!-- new-alert toast: floats bottom-right over everything, above the
+             set-aside banner; click opens the alerting folder. Reaches you
+             even when the alerting tile is scrolled off or the window is
+             unfocused (paired with the taskbar flash + chime). -->
+        <Button VerticalAlignment="Bottom" HorizontalAlignment="Right"
+                Margin="0,0,20,20" MaxWidth="340" Cursor="Hand"
+                Command="{Binding OpenToastCommand}"
+                Visibility="{Binding ToastVisible, Converter={StaticResource BoolToVis}}"
+                AutomationProperties.Name="{Binding ToastText}">
+            <Button.Template>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Card" CornerRadius="10" Padding="14,12"
+                            Background="{DynamicResource Theme.SurfaceRaised}"
+                            BorderBrush="{DynamicResource Theme.Border}" BorderThickness="1"
+                            Effect="{StaticResource Elevation1}"
+                            RenderTransformOrigin="0.5,0.5">
+                        <Border.RenderTransform>
+                            <TranslateTransform x:Name="Slide" />
+                        </Border.RenderTransform>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE7BA;" FontSize="20"
+                                       VerticalAlignment="Top" Margin="0,1,11,0"
+                                       Foreground="{DynamicResource Theme.Danger}" />
+                            <StackPanel>
+                                <TextBlock Text="{Binding ToastText}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding ToastDetail}" TextWrapping="Wrap"
+                                           Style="{StaticResource SubtleText}" Margin="0,2,0,0" />
+                                <TextBlock Text="Click to open the folder"
+                                           Style="{StaticResource CaptionText}" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <!-- slide up + fade in when it appears -->
+                        <Trigger Property="Visibility" Value="Visible">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                         From="0" To="1" Duration="0:0:0.15" />
+                                        <DoubleAnimation Storyboard.TargetName="Slide"
+                                                         Storyboard.TargetProperty="Y"
+                                                         From="16" To="0" Duration="0:0:0.15" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Card" Property="BorderBrush"
+                                    Value="{DynamicResource Theme.Accent}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Button.Template>
+        </Button>
+    </Grid>
 </Window>

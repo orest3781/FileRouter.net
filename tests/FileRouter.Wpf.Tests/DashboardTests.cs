@@ -1,4 +1,5 @@
 using FileRouter.Core;
+using FileRouter.Wpf.Services;
 using FileRouter.Wpf.Theme;
 using FileRouter.Wpf.ViewModels;
 
@@ -6,6 +7,62 @@ namespace FileRouter.Wpf.Tests;
 
 public class DashboardTests
 {
+    // ------------------------------------------------------------ alerts
+    [Fact]
+    public void ANewAlertingFileChimesFlashesAndToasts()
+    {
+        using var fx = WithWatchFolder(out var watched);
+        fx.Shell.Initialize();                       // seeds silently, folder empty
+        var flashed = 0;
+        fx.Shell.AlertArrived += () => flashed++;
+
+        File.WriteAllText(Path.Combine(watched, "URGENT-callback.pdf"), "x");
+        fx.Shell.OnFolderActivity();                 // the file arrives
+
+        Assert.Contains(fx.Sounds.Played, p => p.Evt == SoundEvent.NewAlert);
+        Assert.Equal(1, flashed);
+        Assert.True(fx.Shell.ToastVisible);
+        Assert.Contains("URGENT-callback.pdf", fx.Shell.ToastDetail);
+        Assert.True(fx.Shell.HasActiveAlert);
+    }
+
+    [Fact]
+    public void PreExistingAlertsAreAdoptedSilentlyOnStartup()
+    {
+        using var fx = WithWatchFolder(out var watched);
+        File.WriteAllText(Path.Combine(watched, "URGENT.pdf"), "x");   // there before launch
+        fx.Shell.Initialize();
+
+        Assert.DoesNotContain(fx.Sounds.Played, p => p.Evt == SoundEvent.NewAlert);
+        Assert.False(fx.Shell.ToastVisible);          // no toast storm on open
+        Assert.True(fx.Shell.HasActiveAlert);         // but the badge still shows
+    }
+
+    [Fact]
+    public void TheSameAlertDoesNotReChimeOnEveryPoll()
+    {
+        using var fx = WithWatchFolder(out var watched);
+        fx.Shell.Initialize();
+        File.WriteAllText(Path.Combine(watched, "URGENT.pdf"), "x");
+        fx.Shell.OnFolderActivity();
+        fx.Sounds.Played.Clear();
+
+        fx.Shell.OnFolderActivity();                  // poll, nothing new
+        fx.Shell.OnFolderActivity();
+        Assert.DoesNotContain(fx.Sounds.Played, p => p.Evt == SoundEvent.NewAlert);
+    }
+
+    [Fact]
+    public void DisablingSoundsSilencesChimesButKeepsTheToast()
+    {
+        using var fx = WithWatchFolder(out var watched, cfg => cfg.Sounds.Enabled = false);
+        fx.Shell.Initialize();
+        File.WriteAllText(Path.Combine(watched, "URGENT.pdf"), "x");
+        fx.Shell.OnFolderActivity();
+
+        Assert.Empty(fx.Sounds.Played);               // the master toggle gates sound
+        Assert.True(fx.Shell.ToastVisible);           // visual alerts are not gated
+    }
     private static ShellFixture WithWatchFolder(out string watched,
         Action<Config>? extraTweak = null)
     {

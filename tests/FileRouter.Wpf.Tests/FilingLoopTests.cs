@@ -1,4 +1,5 @@
 using FileRouter.Core;
+using FileRouter.Wpf.Services;
 using FileRouter.Wpf.ViewModels;
 
 namespace FileRouter.Wpf.Tests;
@@ -382,6 +383,15 @@ public class FilingLoopTests
 
         Assert.Contains("--", Assert.Single(fx.Dialogs.Warnings).Message);
         Assert.True(File.Exists(src));              // nothing moved
+    }
+
+    [Fact]
+    public async Task SetAsideAndSessionDonePlayTheirSounds()
+    {
+        using var fx = Started("20240115--111111.pdf");
+        await fx.Shell.OnSkipAsync();                 // last file → set aside → Done
+        Assert.Contains(fx.Sounds.Played, p => p.Evt == SoundEvent.SetAside);
+        Assert.Contains(fx.Sounds.Played, p => p.Evt == SoundEvent.Filed);   // Done fanfare
     }
 
     [Fact]

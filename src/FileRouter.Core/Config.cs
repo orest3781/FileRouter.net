@@ -42,6 +42,20 @@ public sealed class LabelClient
     [JsonExtensionData] public Dictionary<string, System.Text.Json.JsonElement> Extras { get; set; } = new();
 }
 
+/// <summary>Which sound plays for each moment. Each value is a small spec:
+/// "" = the built-in Sendu sound, "none" = silent, "windows" = a fitting
+/// Windows system chime, or a path to a .wav (the ICQ-"uh oh" slot).</summary>
+public sealed class SoundSettings
+{
+    [JsonPropertyName("enabled")] public bool Enabled { get; set; } = true;
+    [JsonPropertyName("new_alert")] public string NewAlert { get; set; } = "";
+    [JsonPropertyName("filed")] public string Filed { get; set; } = "none";
+    [JsonPropertyName("set_aside")] public string SetAside { get; set; } = "none";
+    [JsonPropertyName("error")] public string Error { get; set; } = "";
+
+    [JsonExtensionData] public Dictionary<string, System.Text.Json.JsonElement> Extras { get; set; } = new();
+}
+
 /// <summary>A saved Unlock-tool password. The password value is either
 /// DPAPI-protected ("dpapi:&lt;base64&gt;", written by the app) or legacy
 /// plaintext (hand-edited / migrated from the Python config).</summary>
@@ -100,6 +114,7 @@ public sealed class Config
     [JsonPropertyName("unlock_suffix")] public string UnlockSuffix { get; set; } = "";
     [JsonPropertyName("saved_passwords")] public List<SavedPassword> SavedPasswords { get; set; } = new();
     [JsonPropertyName("label_clients")] public List<LabelClient> LabelClients { get; set; } = new();
+    [JsonPropertyName("sounds")] public SoundSettings Sounds { get; set; } = new();
 
     [JsonExtensionData] public Dictionary<string, JsonElement> Extras { get; set; } = new();
 

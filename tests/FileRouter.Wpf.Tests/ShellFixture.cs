@@ -18,6 +18,7 @@ public sealed class ShellFixture : IDisposable
     public FakeViewer Viewer { get; } = new();
     public FakeDialogs Dialogs { get; } = new();
     public FolderWatchService Watch { get; }
+    public RecordingSoundService Sounds { get; } = new();
     public ShellViewModel Shell { get; }
 
     public ShellFixture(Action<Config>? tweak = null)
@@ -42,7 +43,7 @@ public sealed class ShellFixture : IDisposable
         Watch = new FolderWatchService(debounceMs: 600_000, pollMs: 600_000);
         Shell = new ShellViewModel(Cfg, CfgPath, Viewer, Dialogs, Watch,
             uiContext: null, palette: () => Theme.ThemePalette.Light,
-            scheduler: new InlineWorkScheduler());
+            scheduler: new InlineWorkScheduler(), sounds: Sounds);
     }
 
     /// <summary>Drop a file matching the inbox pattern (YYYYMMDD--ID.pdf).</summary>

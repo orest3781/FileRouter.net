@@ -69,6 +69,22 @@ public class ConfigNewKeysTests : IDisposable
         Assert.Empty(cfg.SavedPasswords);
     }
 
+    [Fact]
+    public void SoundSettingsRoundTripWithSaneDefaults()
+    {
+        var cfg = RoundTrip(new Config());
+        Assert.True(cfg.Sounds.Enabled);
+        Assert.Equal("", cfg.Sounds.NewAlert);      // "" = built-in Sendu sound
+        Assert.Equal("none", cfg.Sounds.Filed);
+        Assert.Equal("none", cfg.Sounds.SetAside);
+
+        cfg.Sounds.Enabled = false;
+        cfg.Sounds.NewAlert = @"C:\sounds\uh-oh.wav";
+        var back = RoundTrip(cfg);
+        Assert.False(back.Sounds.Enabled);
+        Assert.Equal(@"C:\sounds\uh-oh.wav", back.Sounds.NewAlert);
+    }
+
     [Theory]
     [InlineData(5)]
     [InlineData(73)]

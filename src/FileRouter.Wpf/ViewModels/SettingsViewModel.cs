@@ -253,6 +253,76 @@ public sealed class PasswordEditVm : ObservableObject
         ? "encrypted" : "plain text — will be encrypted on save";
 }
 
+/// <summary>One row of the sound picker: which sound plays for one moment.
+/// The four choices (Sendu / Windows / Custom .wav / Silent) map to the
+/// config spec; Test plays the current choice so you hear it before saving.</summary>
+public sealed class SoundChoiceVm : ObservableObject
+{
+    private readonly SoundEvent _evt;
+    private readonly IDialogService _dialogs;
+    private readonly ISoundService _sounds;
+
+    public string Name { get; }
+    public RelayCommand TestCommand { get; }
+    public RelayCommand BrowseCommand { get; }
+
+    public SoundChoiceVm(string name, SoundEvent evt, string spec,
+        IDialogService dialogs, ISoundService sounds)
+    {
+        Name = name;
+        _evt = evt;
+        _dialogs = dialogs;
+        _sounds = sounds;
+        (_choice, _customPath) = FromSpec(spec);
+        TestCommand = new RelayCommand(() => _sounds.Play(_evt, Spec));
+        BrowseCommand = new RelayCommand(PickFile);
+    }
+
+    // 0 Sendu · 1 Windows · 2 Custom · 3 Silent — the ComboBox SelectedIndex
+    private int _choice;
+    public int Choice
+    {
+        get => _choice;
+        set
+        {
+            if (!Set(ref _choice, value)) return;
+            if (value == 2 && _customPath.Length == 0) PickFile();   // "Custom" → prompt
+            Raise(nameof(CustomLabel));
+            Raise(nameof(ShowCustom));
+        }
+    }
+
+    private string _customPath = "";
+    public string CustomLabel => _customPath.Length > 0
+        ? System.IO.Path.GetFileName(_customPath) : "(choose a .wav…)";
+    public bool ShowCustom => _choice == 2;
+
+    /// <summary>The config spec for the current choice.</summary>
+    public string Spec => _choice switch
+    {
+        1 => "windows",
+        2 => _customPath,
+        3 => "none",
+        _ => "",
+    };
+
+    private static (int, string) FromSpec(string spec)
+    {
+        spec = (spec ?? "").Trim();
+        if (spec.Length == 0 || spec.Equals("default", StringComparison.OrdinalIgnoreCase))
+            return (0, "");
+        if (spec.Equals("windows", StringComparison.OrdinalIgnoreCase)) return (1, "");
+        if (spec.Equals("none", StringComparison.OrdinalIgnoreCase)) return (3, "");
+        return (2, spec);
+    }
+
+    private void PickFile()
+    {
+        var path = _dialogs.AskOpenFile("Wave audio (*.wav)|*.wav");
+        if (path is not null) { _customPath = path; Raise(nameof(CustomLabel)); }
+    }
+}
+
 /// <summary>The Settings window's brain. Edits copies; OK validates (hard
 /// errors block, warnings ask "Save anyway?") and produces a NEW Config built
 /// by JSON-cloning the original — so every unedited field and every unknown
@@ -303,12 +373,23 @@ public sealed class SettingsViewModel : ObservableObject
     public Config? Result { get; private set; }
 
     public SettingsViewModel(Config current, IDialogService dialogs,
-        Func<ThemePalette>? palette = null, string? cfgPath = null)
+        Func<ThemePalette>? palette = null, string? cfgPath = null,
+        ISoundService? sounds = null)
     {
         _original = current;
         _dialogs = dialogs;
         _palette = palette ?? (() => ThemePalette.Light);
         _cfgPath = cfgPath;
+
+        SoundsEnabled = current.Sounds.Enabled;
+        NewAlertSound = new SoundChoiceVm("New alert", SoundEvent.NewAlert,
+            current.Sounds.NewAlert, dialogs, sounds ?? new NullSoundService());
+        FiledSound = new SoundChoiceVm("Session done", SoundEvent.Filed,
+            current.Sounds.Filed, dialogs, sounds ?? new NullSoundService());
+        SetAsideSound = new SoundChoiceVm("Set aside", SoundEvent.SetAside,
+            current.Sounds.SetAside, dialogs, sounds ?? new NullSoundService());
+        ErrorSound = new SoundChoiceVm("Couldn't file", SoundEvent.Error,
+            current.Sounds.Error, dialogs, sounds ?? new NullSoundService());
 
         Inbox = current.Inbox;
         Deferred = current.Deferred;
@@ -666,6 +747,15 @@ public sealed class SettingsViewModel : ObservableObject
     private bool _flashAlerts;
     public bool FlashAlerts { get => _flashAlerts; set => Set(ref _flashAlerts, value); }
 
+    // ---- sounds ----
+    private bool _soundsEnabled;
+    public bool SoundsEnabled { get => _soundsEnabled; set => Set(ref _soundsEnabled, value); }
+
+    public SoundChoiceVm NewAlertSound { get; private set; } = null!;
+    public SoundChoiceVm FiledSound { get; private set; } = null!;
+    public SoundChoiceVm SetAsideSound { get; private set; } = null!;
+    public SoundChoiceVm ErrorSound { get; private set; } = null!;
+
     private string _alertTextsText = "";
     public string AlertTextsText
     {
@@ -994,6 +1084,11 @@ public sealed class SettingsViewModel : ObservableObject
         cfg.WordSeparator = WordSeparator;
         cfg.FlashAlerts = FlashAlerts;
         cfg.AlertTexts = ParseAlertTerms();
+        cfg.Sounds.Enabled = SoundsEnabled;
+        cfg.Sounds.NewAlert = NewAlertSound.Spec;
+        cfg.Sounds.Filed = FiledSound.Spec;
+        cfg.Sounds.SetAside = SetAsideSound.Spec;
+        cfg.Sounds.Error = ErrorSound.Spec;
         cfg.UiFontFamily = UiFontFamily;
         cfg.UiFontSize = UiFontSizeText.Trim().Length == 0 ? 0 : int.Parse(UiFontSizeText.Trim());
         cfg.Theme = ThemeMode;

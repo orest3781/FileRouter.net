@@ -75,6 +75,12 @@ workflow tests, builds, zips, and publishes.
   stays, even at zero), or *Hidden* (no tiles — and the folder sweep is
   skipped entirely). Filename alert terms flash a tile (and the count) red,
   and alerts found in subfolders say which one.
+- **Alerts that reach you** — a new alerting file chimes, slides a toast into
+  the corner (click to open the folder), badges the taskbar, and flashes the
+  taskbar button when the app isn't focused — once per newly-arrived file,
+  never on a repeat scan. Sounds are the built-in synthesized *Sendu* set, a
+  Windows chime, any `.wav` you point to, or silent — per moment (new alert,
+  filed, set aside, error). The set-aside banner ages ("oldest 4 days").
 - **Viewer gestures** — Shift+scroll zooms at the cursor, left-drag pans.
 - **History** — a network-safe SQLite audit log with daily point-in-time
   backups, an in-app viewer (filter, lazy load), and CSV export with a

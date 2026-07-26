@@ -831,6 +831,56 @@
                                        TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
+
+                    <TextBlock Text="Sounds" Style="{StaticResource SectionText}" Margin="0,18,0,8" />
+                    <CheckBox Content="Play sounds" IsChecked="{Binding SoundsEnabled}"
+                              Margin="0,0,0,8" />
+                    <StackPanel IsEnabled="{Binding SoundsEnabled}">
+                        <StackPanel.Resources>
+                            <!-- one row per moment; DataContext is a SoundChoiceVm -->
+                            <DataTemplate x:Key="SoundRow">
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110" />
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
+                                               Margin="0,0,10,0" />
+                                    <ComboBox Grid.Column="1" SelectedIndex="{Binding Choice}"
+                                              AutomationProperties.Name="{Binding Name}">
+                                        <ComboBoxItem Content="Sendu" />
+                                        <ComboBoxItem Content="Windows chime" />
+                                        <ComboBoxItem Content="Custom .wav…" />
+                                        <ComboBoxItem Content="Silent" />
+                                    </ComboBox>
+                                    <Button Grid.Column="2" Content="▶ Test" Command="{Binding TestCommand}"
+                                            Style="{StaticResource ChipButton}" Margin="8,0,0,0"
+                                            VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="8,0,0,0"
+                                                VerticalAlignment="Center"
+                                                Visibility="{Binding ShowCustom, Converter={StaticResource BoolToVis}}">
+                                        <Button Content="Browse…" Command="{Binding BrowseCommand}"
+                                                Style="{StaticResource ChipButton}" />
+                                        <TextBlock Text="{Binding CustomLabel}" Style="{StaticResource SubtleText}"
+                                                   FontSize="11" VerticalAlignment="Center" Margin="8,0,0,0"
+                                                   TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </StackPanel.Resources>
+                        <ContentControl Content="{Binding NewAlertSound}"
+                                        ContentTemplate="{StaticResource SoundRow}" />
+                        <ContentControl Content="{Binding FiledSound}"
+                                        ContentTemplate="{StaticResource SoundRow}" />
+                        <ContentControl Content="{Binding SetAsideSound}"
+                                        ContentTemplate="{StaticResource SoundRow}" />
+                        <ContentControl Content="{Binding ErrorSound}"
+                                        ContentTemplate="{StaticResource SoundRow}" />
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,4,0,0"
+                               Text="Sendu = the built-in sounds. Custom plays any .wav you point to. A new-alert sound plays once per newly-arrived file — never on a repeat scan." />
                 </StackPanel>
                 </ScrollViewer>
             </TabItem>

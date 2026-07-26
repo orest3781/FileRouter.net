@@ -68,4 +68,24 @@ public static class Scanner
         if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder)) return 0;
         try { return Directory.GetFiles(folder).Length; } catch { return 0; }
     }
+
+    /// <summary>Set-aside folder summary: how many files, and how old the
+    /// oldest is in whole days — age is the point in a retention shop. Never
+    /// throws; empty/missing/unreadable → (0, 0). "now" is injectable for tests.</summary>
+    public sealed record DeferredInfo(int Count, int OldestAgeDays);
+
+    public static DeferredInfo DeferredSummary(string? folder, DateTime? now = null)
+    {
+        if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder))
+            return new DeferredInfo(0, 0);
+        try
+        {
+            var files = Directory.GetFiles(folder);
+            if (files.Length == 0) return new DeferredInfo(0, 0);
+            var oldest = files.Min(SafeMtime);   // ticks; smallest = oldest
+            var age = (now ?? DateTime.Now) - new DateTime(oldest, DateTimeKind.Utc).ToLocalTime();
+            return new DeferredInfo(files.Length, Math.Max(0, (int)age.TotalDays));
+        }
+        catch { return new DeferredInfo(0, 0); }
+    }
 }

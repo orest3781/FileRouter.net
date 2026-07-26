@@ -1,12 +1,37 @@
 using System.Windows;
+using System.Windows.Media;
+using System.Windows.Shell;
 using FileRouter.Core;
 using FileRouter.Wpf.Services;
+using FileRouter.Wpf.Theme;
 using FileRouter.Wpf.ViewModels;
 
 namespace FileRouter.Wpf;
 
 public partial class MainWindow : Window
 {
+    // taskbar overlay: a red dot with a thin light ring so it reads on any
+    // taskbar color. Drawn once, frozen.
+    private static readonly ImageSource AlertBadge = MakeBadge();
+
+    private static ImageSource MakeBadge()
+    {
+        var dg = new DrawingGroup();
+        dg.Children.Add(new GeometryDrawing(Brushes.White, null,
+            new EllipseGeometry(new Point(16, 16), 16, 16)));
+        dg.Children.Add(new GeometryDrawing(
+            new SolidColorBrush(Color.FromRgb(0xD1, 0x3A, 0x3A)), null,
+            new EllipseGeometry(new Point(16, 16), 13, 13)));
+        var img = new DrawingImage(dg);
+        img.Freeze();
+        return img;
+    }
+
+    private void ApplyAlertBadge()
+    {
+        TaskbarItemInfo ??= new TaskbarItemInfo();
+        TaskbarItemInfo.Overlay = Shell.HasActiveAlert ? AlertBadge : null;
+    }
     private readonly WebViewPdfViewer _pdf;
     private readonly FolderWatchService _watch;
     internal ShellViewModel Shell { get; }
@@ -28,10 +53,18 @@ public partial class MainWindow : Window
         Dialogs = new DialogService(this);
         _watch = new FolderWatchService(context: SynchronizationContext.Current);
         Shell = new ShellViewModel(cfg, cfgPath, _pdf,
-            new DialogRelay(() => Dialogs), _watch, SynchronizationContext.Current);
+            new DialogRelay(() => Dialogs), _watch, SynchronizationContext.Current,
+            sounds: new SoundService());
         DataContext = Shell;
 
         Shell.RoutesRebuilt += RebindRouteHotkeys;
+        // taskbar overlay follows the alert state; a new alert flashes the
+        // taskbar button when we're not the foreground window
+        Shell.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ShellViewModel.HasActiveAlert)) ApplyAlertBadge();
+        };
+        Shell.AlertArrived += () => { if (!IsActive) TaskbarFlash.Flash(this); };
         Shell.SettingsApplied += () =>
         {
             App.ApplyFont(Application.Current, Shell.Cfg);
@@ -242,7 +275,7 @@ public partial class MainWindow : Window
             return;
         }
         var vm = new SettingsViewModel(Shell.Cfg, Dialogs, () => Theme.ThemeManager.Current,
-            Shell.CfgPath);
+            Shell.CfgPath, new SoundService());
         var win = new Windows.SettingsWindow(vm) { Owner = this };
         if (win.ShowDialog() == true && vm.Result is { } cfg)
             Shell.ApplySettings(cfg);

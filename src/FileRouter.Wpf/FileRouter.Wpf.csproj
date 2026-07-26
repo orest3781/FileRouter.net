@@ -16,6 +16,8 @@
     <Resource Include="app.ico" />
     <!-- empty-state illustrations (generated, de-whited, 512px) -->
     <Resource Include="Assets\*.png" />
+    <!-- original synthesized alert sounds -->
+    <Resource Include="Assets\sounds\*.wav" />
   </ItemGroup>
 
   <ItemGroup>
