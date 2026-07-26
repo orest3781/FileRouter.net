@@ -155,6 +155,25 @@ public class DashboardTests
     }
 
     [Fact]
+    public void UnchangedPollDoesNotRebuildTiles()
+    {
+        using var fx = WithWatchFolder(out var watched);
+        File.WriteAllText(Path.Combine(watched, "a.pdf"), "x");
+        fx.Shell.Initialize();
+        var tile = Assert.Single(fx.Shell.Tiles);
+
+        fx.Shell.OnFolderActivity();   // the 30 s poll with nothing new
+        fx.Shell.OnFolderActivity();
+        Assert.Same(tile, Assert.Single(fx.Shell.Tiles));   // no blink: same tile
+
+        File.WriteAllText(Path.Combine(watched, "b.pdf"), "x");
+        fx.Shell.OnFolderActivity();   // a real change rebuilds
+        var rebuilt = Assert.Single(fx.Shell.Tiles);
+        Assert.NotSame(tile, rebuilt);
+        Assert.Equal("2", rebuilt.CountText);
+    }
+
+    [Fact]
     public void QuietMonitoringSaysSoInsteadOfVanishing()
     {
         using var fx = WithWatchFolder(out var watched);

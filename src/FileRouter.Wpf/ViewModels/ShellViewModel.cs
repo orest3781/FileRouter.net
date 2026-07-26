@@ -317,15 +317,29 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// alert term (flashing, or steady when flash_alerts is off).</summary>
     public bool CountAlertOn => InboxAlerting && (_flashOn || !_cfg.FlashAlerts);
 
+    private List<string> _tileSignature = new();
+    private ThemePalette? _tilePalette;
+
     /// <summary>Rebuild the monitored-folder tiles (shown on Ready only, and
     /// only for folders holding files or in error), the inbox alert state, and
     /// (re)start the 600 ms flash if anything is alerting. Statuses arrive
-    /// pre-gathered off-thread.</summary>
+    /// pre-gathered off-thread. Tiles are only REBUILT when something actually
+    /// changed — the 30 s poll must not replay the fade-in on identical tiles
+    /// (the "blink").</summary>
     private void RefreshDashboard(Scanner.ScanResult inboxScan,
         List<FolderMonitor.FolderStatus> statuses)
     {
-        Tiles.Clear();
-        foreach (var s in statuses) Tiles.Add(new TileViewModel(s, _palette()));
+        var p = _palette();
+        var signature = statuses.Select(s =>
+            $"{s.Label}|{s.Path}|{s.Color}|{s.Count}|{s.Error}|{s.Alerting}"
+            + $"|{string.Join(",", s.AlertFolders)}").ToList();
+        if (!ReferenceEquals(p, _tilePalette) || !signature.SequenceEqual(_tileSignature))
+        {
+            _tileSignature = signature;
+            _tilePalette = p;
+            Tiles.Clear();
+            foreach (var s in statuses) Tiles.Add(new TileViewModel(s, p));
+        }
 
         MonitorTitle = _cfg.MonitorTitle;
         DashboardVisible = Screen == Screen.Ready && statuses.Count > 0;
@@ -338,8 +352,13 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         var anyAlert = InboxAlerting || statuses.Any(s => s.Alerting);
         if (anyAlert && _cfg.FlashAlerts)
         {
-            FlashRunning = true;
-            _flash.Change(600, 600);
+            // don't reset a running flash — the poll would visibly stutter
+            // the blink phase every 30 seconds
+            if (!FlashRunning)
+            {
+                FlashRunning = true;
+                _flash.Change(600, 600);
+            }
         }
         else
         {
