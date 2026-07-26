@@ -62,12 +62,18 @@
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
-                    <TextBlock Text="No clients yet — press Add." Style="{StaticResource SubtleText}"
-                               Margin="10" IsHitTestVisible="False">
-                        <TextBlock.Visibility>
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                IsHitTestVisible="False">
+                        <StackPanel.Visibility>
                             <Binding Path="Clients.Count" Converter="{StaticResource ZeroToVis}" />
-                        </TextBlock.Visibility>
-                    </TextBlock>
+                        </StackPanel.Visibility>
+                        <Image Height="76" Margin="0,0,0,8"
+                               RenderOptions.BitmapScalingMode="HighQuality"
+                               Source="pack://application:,,,/FileRouter.Wpf;component/Assets/labels-empty.png" />
+                        <TextBlock Text="No clients yet — press Add."
+                                   Style="{StaticResource SubtleText}"
+                                   HorizontalAlignment="Center" />
+                    </StackPanel>
                 </Grid>
             </DockPanel>
 

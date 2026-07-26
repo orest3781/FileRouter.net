@@ -33,3 +33,4 @@ history.sqlite-journal
 history.sqlite-wal
 history.sqlite-shm
 crash.log
+.env
