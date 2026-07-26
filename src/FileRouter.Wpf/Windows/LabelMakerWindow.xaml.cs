@@ -34,7 +34,7 @@ public partial class LabelMakerWindow : Window
     {
         var vm = (LabelMakerViewModel)DataContext;
         var preview = new PrintPreviewWindow(LabelPrinting.BuildDocument(items), jobName,
-            msg => vm.Dialogs.Warn(msg, "FileRouter — label maker")) { Owner = this };
+            msg => vm.Dialogs.Warn(msg, "Sendu — label maker")) { Owner = this };
         preview.ShowDialog();
         return preview.Printed;
     }

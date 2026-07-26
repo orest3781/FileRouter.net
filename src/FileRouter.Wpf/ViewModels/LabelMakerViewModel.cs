@@ -94,7 +94,7 @@ public sealed class LabelMakerViewModel : ObservableObject
             if (!pristine && !_dialogs.Confirm(
                     $"Remove \"{s.Id}\"?\n\nIts running label number ({s.NextNumberText}) "
                     + "will be lost — re-adding the client starts back at 1.",
-                    "FileRouter — label maker"))
+                    "Sendu — label maker"))
                 return;
             Clients.Remove(s);
             Selected = Clients.FirstOrDefault();
@@ -213,7 +213,7 @@ public sealed class LabelMakerViewModel : ObservableObject
         if (problems.Count > 0)
         {
             _dialogs.Warn("These need fixing first:\n\n • " + string.Join("\n • ", problems),
-                "FileRouter — label maker");
+                "Sendu — label maker");
             return null;
         }
         var start = long.Parse(s.NextNumberText.Trim());
@@ -236,10 +236,10 @@ public sealed class LabelMakerViewModel : ObservableObject
         if (BuildBatch() is not { } b) return;
         if (PrintSheets is null)
         {
-            _dialogs.Warn("Printing isn't available here.", "FileRouter — label maker");
+            _dialogs.Warn("Printing isn't available here.", "Sendu — label maker");
             return;
         }
-        if (!PrintSheets(b.Items, $"FileRouter labels {b.Items[0].Code}")) return;   // cancelled
+        if (!PrintSheets(b.Items, $"Sendu labels {b.Items[0].Code}")) return;   // cancelled
         var sheets = (b.Count + BoxLabels.PerSheet - 1) / BoxLabels.PerSheet;
         Advance(b.Client, b.Start, b.Count,
             $"Sent {b.Count} label{(b.Count == 1 ? "" : "s")} "
@@ -258,7 +258,7 @@ public sealed class LabelMakerViewModel : ObservableObject
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            _dialogs.Warn("Couldn't save it: " + ex.Message, "FileRouter — label maker");
+            _dialogs.Warn("Couldn't save it: " + ex.Message, "Sendu — label maker");
             return;
         }
         var sheets = (b.Count + BoxLabels.PerSheet - 1) / BoxLabels.PerSheet;

@@ -1,7 +1,7 @@
 <Window x:Class="FileRouter.Wpf.Windows.MatchMergeWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="FileRouter — Match and merge" Width="840" Height="640" MinWidth="720" MinHeight="520"
+        Title="Sendu — Match and merge" Width="840" Height="640" MinWidth="720" MinHeight="520"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False" AllowDrop="True"
         DragOver="OnDragOver" Drop="OnDrop"
         Style="{StaticResource {x:Type Window}}">

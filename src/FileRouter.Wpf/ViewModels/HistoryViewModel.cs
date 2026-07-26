@@ -102,11 +102,11 @@ public sealed class HistoryViewModel : ObservableObject
         try
         {
             var count = _history.ExportCsv(dest);
-            _dialogs.Info($"Exported {count} rows to {dest}", "FileRouter");
+            _dialogs.Info($"Exported {count} rows to {dest}", "Sendu");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            _dialogs.Warn("Couldn't save it: " + ex.Message, "FileRouter");
+            _dialogs.Warn("Couldn't save it: " + ex.Message, "Sendu");
         }
     }
 }

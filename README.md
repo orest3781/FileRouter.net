@@ -1,17 +1,21 @@
 <p align="center">
-  <img src="docs/banner.png" alt="FileRouter — fast desktop file routing for Windows" width="840">
+  <img src="docs/banner.png" alt="sendu — every document, where it belongs" width="840">
 </p>
 
-# FileRouter
+# sendu
 
-A fast Windows desktop tool for **file routing**: name incoming documents and
-send them to the right folder in two actions — type a name, press a button.
+**Every document, where it belongs.** *Sendu* is the Esperanto imperative of
+"send" — the command, which is the whole job: type a name, press a button,
+sent.
 
-FileRouter watches an inbox folder. Each arriving PDF opens in a built-in
-viewer; you type the name it should carry, press one of your destination
-buttons (or its hotkey), and the file is renamed and moved. A dashboard shows
-what's waiting, monitored folders light up when they need attention, and every
-move is written to a tamper-evident audit log.
+Sendu watches an inbox folder. Each arriving PDF opens in a built-in viewer;
+you type the name it should carry, press one of your destination buttons (or
+its hotkey), and the file is renamed and moved. A dashboard shows what's
+waiting, monitored folders light up when they need attention, and every move
+is written to a tamper-evident audit log.
+
+> Formerly *FileRouter* — the assembly and repository keep that name for
+> compatibility with existing installs; the product is Sendu.
 
 Built with C# / .NET 8 + WPF. PDFs render in **WebView2** (Edge's engine,
 already on the machine), so no PDF library ships with the app.

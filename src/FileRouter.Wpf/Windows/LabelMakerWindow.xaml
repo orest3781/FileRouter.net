@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="clr-namespace:FileRouter.Wpf.Views"
-        Title="FileRouter — Box labels" Width="680" Height="560" MinWidth="600" MinHeight="500"
+        Title="Sendu — Box labels" Width="680" Height="560" MinWidth="600" MinHeight="500"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         Style="{StaticResource {x:Type Window}}">
     <DockPanel Margin="14">

@@ -67,7 +67,7 @@ public partial class MainWindow : Window
             if (!await _pdf.InitAsync())
                 Dialogs.Warn(
                     "The PDF viewer (WebView2) failed to start:\n\n" + _pdf.InitError,
-                    "FileRouter");
+                    "Sendu");
             Shell.Initialize();
         };
         // X while filing (or on the summary) returns to the dashboard instead
@@ -231,7 +231,7 @@ public partial class MainWindow : Window
         if (!Shell.IsReady)
         {
             Dialogs.Info("Finish or stop the current session first (Esc stops it — nothing is lost).",
-                "FileRouter");
+                "Sendu");
             return;
         }
         var vm = new SettingsViewModel(Shell.Cfg, Dialogs, () => Theme.ThemeManager.Current,

@@ -20,7 +20,7 @@ public partial class App : Application
             LogCrash(ex.Exception);
             MessageBox.Show(
                 "Something went wrong — details were written to crash.log.\n\n" +
-                ex.Exception.Message, "FileRouter", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ex.Exception.Message, "Sendu", MessageBoxButton.OK, MessageBoxImage.Warning);
             ex.Handled = true;
         };
         AppDomain.CurrentDomain.UnhandledException += (_, ex) =>
@@ -37,7 +37,7 @@ public partial class App : Application
         }
         catch (ConfigException ex)
         {
-            MessageBox.Show(ex.Message, "FileRouter — configuration problem",
+            MessageBox.Show(ex.Message, "Sendu — configuration problem",
                 MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown(1);
             return;
@@ -57,8 +57,8 @@ public partial class App : Application
             // the shell ctor opens SQLite and takes the daily backup — a locked
             // or corrupt history DB must fail with a dialog, not a silent crash
             LogCrash(ex);
-            MessageBox.Show("FileRouter couldn't start:\n\n" + ex.Message,
-                "FileRouter", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show("Sendu couldn't start:\n\n" + ex.Message,
+                "Sendu", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown(1);
         }
     }

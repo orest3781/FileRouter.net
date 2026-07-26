@@ -560,7 +560,7 @@ public sealed class SettingsViewModel : ObservableObject
         var p = path?.Trim() ?? "";
         if (p.Length == 0)
         {
-            _dialogs.Warn("Pick a folder path first.", "FileRouter");
+            _dialogs.Warn("Pick a folder path first.", "Sendu");
             return;
         }
         try
@@ -570,7 +570,7 @@ public sealed class SettingsViewModel : ObservableObject
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
                                    or ArgumentException or NotSupportedException)
         {
-            _dialogs.Warn($"Couldn't create {p}: {ex.Message}", "FileRouter");
+            _dialogs.Warn($"Couldn't create {p}: {ex.Message}", "Sendu");
             return;
         }
         refresh();
@@ -583,7 +583,7 @@ public sealed class SettingsViewModel : ObservableObject
             System.Diagnostics.Process.Start(
                 new System.Diagnostics.ProcessStartInfo(p) { UseShellExecute = true });
         else
-            _dialogs.Warn("That folder doesn't exist yet.", "FileRouter");
+            _dialogs.Warn("That folder doesn't exist yet.", "Sendu");
     }
 
     public RelayCommand OpenBackupsCommand => _openBackups ??= new RelayCommand(() =>
@@ -601,7 +601,7 @@ public sealed class SettingsViewModel : ObservableObject
                 new System.Diagnostics.ProcessStartInfo(backups) { UseShellExecute = true });
         else
             _dialogs.Info("No backups yet — the first one is taken the next time the app starts.",
-                "FileRouter");
+                "Sendu");
     });
     private RelayCommand? _openBackups;
 
@@ -966,14 +966,14 @@ public sealed class SettingsViewModel : ObservableObject
         if (errors.Count > 0)
         {
             _dialogs.Warn("These need fixing first:\n\n • " + string.Join("\n • ", errors),
-                "FileRouter — check the settings");
+                "Sendu — check the settings");
             return false;
         }
 
         var warnings = Warnings();
         if (warnings.Count > 0 && !_dialogs.Confirm(
                 " • " + string.Join("\n • ", warnings) + "\n\nSave anyway?",
-                "FileRouter — possible problems"))
+                "Sendu — possible problems"))
             return false;
 
         // JSON-clone the original so EVERY unedited field and unknown key

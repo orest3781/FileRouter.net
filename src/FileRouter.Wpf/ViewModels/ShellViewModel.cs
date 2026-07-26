@@ -583,7 +583,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             }
             catch (CommitError ex)
             {
-                _dialogs.Warn(ex.Message, "FileRouter — couldn't file it");
+                _dialogs.Warn(ex.Message, "Sendu — couldn't file it");
                 await LoadCurrentAsync();   // reload the same doc; nothing moved
                 return;
             }
@@ -612,7 +612,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             }
             catch (CommitError ex)
             {
-                _dialogs.Warn(ex.Message, "FileRouter — set-aside failed");
+                _dialogs.Warn(ex.Message, "Sendu — set-aside failed");
             }
             await RefreshDeferredAsync();
             await LoadCurrentAsync();
@@ -637,7 +637,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             }
             catch (CommitError ex)
             {
-                _dialogs.Warn(ex.Message, "FileRouter — undo failed");
+                _dialogs.Warn(ex.Message, "Sendu — undo failed");
                 return;
             }
             if (Screen == Screen.Done)   // undo from Done re-enters the session
@@ -680,7 +680,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     internal void SaveConfigNow()
     {
         if (!Config.TrySave(_cfg, _cfgPath, out var error))
-            _dialogs.Warn(error, "FileRouter — settings not saved");
+            _dialogs.Warn(error, "Sendu — settings not saved");
     }
 
     internal void SaveMergeHeaders(Dictionary<string, string> headers)
@@ -701,7 +701,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         var newDb = ResolvePath(cfg.HistoryDb, _cfgPath);
         _cfg = cfg;
         if (!Config.TrySave(cfg, _cfgPath, out var error))
-            _dialogs.Warn(error, "FileRouter — settings not saved");
+            _dialogs.Warn(error, "Sendu — settings not saved");
         if (!string.Equals(oldDb, newDb, StringComparison.OrdinalIgnoreCase))
         {
             // the backup copies the whole DB file — off the UI thread, it can
@@ -737,11 +737,11 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         {
             var history = _history;
             var count = await _scheduler.Run(() => history.ExportCsv(dest));
-            _dialogs.Info($"Exported {count} rows to {dest}", "FileRouter");
+            _dialogs.Info($"Exported {count} rows to {dest}", "Sendu");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            _dialogs.Warn("Couldn't save it: " + ex.Message, "FileRouter");
+            _dialogs.Warn("Couldn't save it: " + ex.Message, "Sendu");
         }
     }
 
