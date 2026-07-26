@@ -63,11 +63,13 @@ public sealed class LabelMakerViewModel : ObservableObject
     private readonly IDialogService _dialogs;
     private readonly Func<DateTime> _today;
     private readonly Action<string> _openFile;
+    private readonly IWorkScheduler _scheduler;
 
     public ObservableCollection<LabelClientVm> Clients { get; } = new();
 
     public LabelMakerViewModel(Config cfg, Action saveConfig, IDialogService dialogs,
-        Func<DateTime>? today = null, Action<string>? openFile = null)
+        Func<DateTime>? today = null, Action<string>? openFile = null,
+        IWorkScheduler? scheduler = null)
     {
         _cfg = cfg;
         _saveConfig = saveConfig;
@@ -75,6 +77,7 @@ public sealed class LabelMakerViewModel : ObservableObject
         _today = today ?? (() => DateTime.Now);
         _openFile = openFile ?? (p => System.Diagnostics.Process.Start(
             new System.Diagnostics.ProcessStartInfo(p) { UseShellExecute = true }));
+        _scheduler = scheduler ?? new TaskWorkScheduler();
 
         foreach (var c in cfg.LabelClients) Hook(Clients.AddReturn(LabelClientVm.From(c)));
 
@@ -246,7 +249,9 @@ public sealed class LabelMakerViewModel : ObservableObject
             + $"({sheets} sheet{(sheets == 1 ? "" : "s")}) to the printer.");
     }
 
-    internal void SavePdf()
+    internal void SavePdf() => _ = SavePdfAsync();
+
+    internal async Task SavePdfAsync()
     {
         if (BuildBatch() is not { } b) return;
         var dest = _dialogs.AskSaveFile("PDF files (*.pdf)|*.pdf",
@@ -254,7 +259,8 @@ public sealed class LabelMakerViewModel : ObservableObject
         if (dest is null) return;
         try
         {
-            BoxLabels.RenderPdf(dest, b.Items);
+            // rendering + writing can target a share — never on the UI thread
+            await _scheduler.Run(() => BoxLabels.RenderPdf(dest, b.Items));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

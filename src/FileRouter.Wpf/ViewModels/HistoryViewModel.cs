@@ -33,31 +33,35 @@ public sealed record HistoryRow(
         || Route.Contains(filter, StringComparison.OrdinalIgnoreCase);
 }
 
-/// <summary>The in-app audit viewer — the one user-facing feature the Python
-/// original had that the WinForms port never grew. Newest first, lazy 500-row
-/// load with Show all, live substring filter, CSV export.</summary>
+/// <summary>The in-app audit viewer — newest first, lazy 500-row load with
+/// Show all, live substring filter, CSV export. Every SQLite touch runs off
+/// the UI thread: the history DB can live on a share where a single query
+/// (or a busy_timeout wait) takes seconds, and filtering must stay pure
+/// in-memory — no query per keystroke.</summary>
 public sealed class HistoryViewModel : ObservableObject
 {
     public const int InitialLoad = 500;
 
     private readonly History _history;
     private readonly IDialogService _dialogs;
-    private List<HistoryRow> _loaded;
+    private readonly IWorkScheduler _scheduler;
+    private List<HistoryRow> _loaded = new();
+    private long _total;
     private bool _showedAll;
 
     public ObservableCollection<HistoryRow> Rows { get; } = new();
     public RelayCommand ShowAllCommand { get; }
     public RelayCommand ExportCommand { get; }
 
-    public HistoryViewModel(History history, IDialogService dialogs)
+    public HistoryViewModel(History history, IDialogService dialogs,
+        IWorkScheduler? scheduler = null)
     {
         _history = history;
         _dialogs = dialogs;
-        _loaded = _history.Rows(InitialLoad).Select(HistoryRow.From).ToList();
-        _showedAll = _loaded.Count < InitialLoad;
-        ShowAllCommand = new RelayCommand(ShowAll, () => !_showedAll);
-        ExportCommand = new RelayCommand(Export);
-        Refresh();
+        _scheduler = scheduler ?? new TaskWorkScheduler();
+        ShowAllCommand = new RelayCommand(() => _ = LoadAsync(all: true), () => !_showedAll);
+        ExportCommand = new RelayCommand(() => _ = ExportAsync());
+        _ = LoadAsync(all: false);
     }
 
     private string _filter = "";
@@ -72,15 +76,24 @@ public sealed class HistoryViewModel : ObservableObject
 
     public bool CanShowAll => !_showedAll;
 
-    private void ShowAll()
+    internal async Task LoadAsync(bool all)
     {
-        _loaded = _history.Rows().Select(HistoryRow.From).ToList();
-        _showedAll = true;
+        var history = _history;
+        var (rows, total) = await _scheduler.Run(() =>
+        {
+            var loaded = (all ? history.Rows() : history.Rows(InitialLoad))
+                .Select(HistoryRow.From).ToList();
+            return (loaded, (long)history.Count());
+        });
+        _loaded = rows;
+        _total = total;   // cached — the filter never re-queries
+        _showedAll = all || rows.Count < InitialLoad;
         ShowAllCommand.RaiseCanExecuteChanged();
         Raise(nameof(CanShowAll));
         Refresh();
     }
 
+    /// <summary>Pure in-memory: reapply the filter to the loaded rows.</summary>
     private void Refresh()
     {
         var visible = Filter.Length == 0
@@ -89,19 +102,19 @@ public sealed class HistoryViewModel : ObservableObject
         Rows.Clear();
         foreach (var r in visible) Rows.Add(r);
 
-        var total = _history.Count();
         FooterText = _showedAll
-            ? $"{Rows.Count} of {total} filings shown"
-            : $"Showing the latest {Rows.Count} of {total} filings";
+            ? $"{Rows.Count} of {_total} filings shown"
+            : $"Showing the latest {Rows.Count} of {_total} filings";
     }
 
-    private void Export()
+    internal async Task ExportAsync()
     {
         var dest = _dialogs.AskSaveFile("Spreadsheet files (*.csv)|*.csv", "filerouter_history.csv");
         if (dest is null) return;
         try
         {
-            var count = _history.ExportCsv(dest);
+            var history = _history;
+            var count = await _scheduler.Run(() => history.ExportCsv(dest));
             _dialogs.Info($"Exported {count} rows to {dest}", "Sendu");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

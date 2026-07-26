@@ -207,9 +207,16 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnViewHistory(object sender, RoutedEventArgs e) =>
+    private void OnViewHistory(object sender, RoutedEventArgs e)
+    {
+        if (Shell.HistorySwapping)
+        {
+            Dialogs.Info("One moment — the history database is being switched over.", "Sendu");
+            return;
+        }
         new Windows.HistoryWindow(new ViewModels.HistoryViewModel(Shell.History, Dialogs))
         { Owner = this }.ShowDialog();
+    }
 
     private void OnUnlock(object sender, RoutedEventArgs e) =>
         new Windows.UnlockWindow(new UnlockViewModel(Shell.Cfg, Shell.SaveConfigNow))

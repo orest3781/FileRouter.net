@@ -78,6 +78,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     internal Session Session => _session;
     internal History History => _history;
 
+    /// <summary>True for the moment ApplySettings is re-opening the history
+    /// DB at a new path — _history is unusable until the swap lands.</summary>
+    internal bool HistorySwapping { get; private set; }
+
     /// <summary>The view uses this to turn on TextBox CharacterCasing so
     /// uppercase typing keeps the caret steady.</summary>
     public bool UppercaseNames => _cfg.UppercaseNames;
@@ -705,16 +709,23 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         if (!string.Equals(oldDb, newDb, StringComparison.OrdinalIgnoreCase))
         {
             // the backup copies the whole DB file — off the UI thread, it can
-            // live on a share
+            // live on a share. While the swap runs, _history points at a
+            // disposed instance: HistorySwapping gates the two UI entry
+            // points (History window, CSV export) that could touch it.
             var old = _history;
-            _history = await _scheduler.Run(() =>
+            HistorySwapping = true;
+            try
             {
-                old.Dispose();
-                HistoryBackup.BackupDaily(newDb,
-                    Path.Combine(Path.GetDirectoryName(Path.GetFullPath(newDb))!, "backups"),
-                    DateTime.Now);
-                return new History(newDb);
-            });
+                _history = await _scheduler.Run(() =>
+                {
+                    old.Dispose();
+                    HistoryBackup.BackupDaily(newDb,
+                        Path.Combine(Path.GetDirectoryName(Path.GetFullPath(newDb))!, "backups"),
+                        DateTime.Now);
+                    return new History(newDb);
+                });
+            }
+            finally { HistorySwapping = false; }
         }
         _session = new Session(cfg, _history);
         await _scheduler.Run(() => _watch.SetFolders(cfg.Inbox, cfg.Deferred));
@@ -731,6 +742,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     internal async Task ExportHistoryAsync()
     {
+        if (HistorySwapping) return;   // mid-swap, the handle is being replaced
         var dest = _dialogs.AskSaveFile("Spreadsheet files (*.csv)|*.csv", "filerouter_history.csv");
         if (dest is null) return;
         try

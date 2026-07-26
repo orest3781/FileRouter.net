@@ -13,7 +13,8 @@ public class LabelMakerViewModelTests : IDisposable
     private static readonly DateTime Today = new(2026, 7, 25);
 
     private LabelMakerViewModel Vm(Config cfg) =>
-        new(cfg, () => _saved = true, _dialogs, () => Today, _opened.Add);
+        new(cfg, () => _saved = true, _dialogs, () => Today, _opened.Add,
+            new InlineWorkScheduler());
 
     public void Dispose()
     {

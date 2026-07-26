@@ -36,7 +36,7 @@ public class HistoryViewModelTests : IDisposable
     public void LoadsNewestFiveHundredWithFooter()
     {
         Seed(600);
-        var vm = new HistoryViewModel(_history, _dialogs);
+        var vm = new HistoryViewModel(_history, _dialogs, new InlineWorkScheduler());
         Assert.Equal(500, vm.Rows.Count);
         Assert.Equal("NAME 599", vm.Rows[0].Name);   // newest first
         Assert.True(vm.CanShowAll);
@@ -47,7 +47,7 @@ public class HistoryViewModelTests : IDisposable
     public void ShowAllLoadsEverything()
     {
         Seed(600);
-        var vm = new HistoryViewModel(_history, _dialogs);
+        var vm = new HistoryViewModel(_history, _dialogs, new InlineWorkScheduler());
         vm.ShowAllCommand.Execute(null);
         Assert.Equal(600, vm.Rows.Count);
         Assert.False(vm.CanShowAll);
@@ -58,7 +58,7 @@ public class HistoryViewModelTests : IDisposable
     public void SmallTablesNeedNoShowAll()
     {
         Seed(3);
-        var vm = new HistoryViewModel(_history, _dialogs);
+        var vm = new HistoryViewModel(_history, _dialogs, new InlineWorkScheduler());
         Assert.Equal(3, vm.Rows.Count);
         Assert.False(vm.CanShowAll);
     }
@@ -69,7 +69,7 @@ public class HistoryViewModelTests : IDisposable
         Seed(20);
         _history.LogCommit("c:\\in\\x.pdf", "x.pdf", "SMITH JOHN.pdf",
             "SMITH JOHN", "replace", "", "Statements", "c:\\out", tagged: false, "");
-        var vm = new HistoryViewModel(_history, _dialogs);
+        var vm = new HistoryViewModel(_history, _dialogs, new InlineWorkScheduler());
 
         vm.Filter = "smith";
         Assert.Single(vm.Rows);
@@ -85,7 +85,7 @@ public class HistoryViewModelTests : IDisposable
         var id = _history.LogCommit("c:\\in\\x.pdf", "x.pdf", "Y.pdf", "Y",
             "insert", "", "Invoices", "c:\\out", tagged: false, "");
         _history.MarkReverted(id);
-        var vm = new HistoryViewModel(_history, _dialogs);
+        var vm = new HistoryViewModel(_history, _dialogs, new InlineWorkScheduler());
         Assert.True(Assert.Single(vm.Rows).Reverted);
     }
 
@@ -93,7 +93,7 @@ public class HistoryViewModelTests : IDisposable
     public void ExportGoesThroughTheDialogService()
     {
         Seed(2);
-        var vm = new HistoryViewModel(_history, _dialogs);
+        var vm = new HistoryViewModel(_history, _dialogs, new InlineWorkScheduler());
         var dest = Path.Combine(_dir, "out.csv");
         _dialogs.NextSaveFile = dest;
         vm.ExportCommand.Execute(null);
