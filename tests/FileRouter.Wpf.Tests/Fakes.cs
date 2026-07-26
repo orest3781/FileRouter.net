@@ -14,12 +14,17 @@ public sealed class FakeViewer : IPdfViewer
     /// mid-flight to prove reentrancy handling.</summary>
     public TaskCompletionSource? HoldRelease { get; set; }
 
+    /// <summary>When set, ReleaseAsync throws it — stands in for any unforeseen
+    /// fault inside the commit path.</summary>
+    public Exception? ThrowOnRelease { get; set; }
+
     public Task ShowAsync(string path) { Shown.Add(path); return Task.CompletedTask; }
 
     public async Task ReleaseAsync()
     {
         Releases++;
         if (HoldRelease is { } hold) await hold.Task;
+        if (ThrowOnRelease is { } boom) throw boom;
     }
 
     public void Blank() => Blanks++;

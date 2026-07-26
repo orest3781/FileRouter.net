@@ -110,3 +110,15 @@ public sealed class CommitError : Exception
 {
     public CommitError(string message) : base(message) { }
 }
+
+/// <summary>The document moved, but the audit row could not be written. Carries
+/// where the document actually landed so the user can be told the truth — the
+/// move is done and cannot be un-done by pretending it failed.</summary>
+public sealed class AuditError : Exception
+{
+    public AuditError(string newPath, string message) : base(message) =>
+        NewPath = newPath;
+
+    /// <summary>Where the document is now.</summary>
+    public string NewPath { get; }
+}

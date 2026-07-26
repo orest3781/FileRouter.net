@@ -66,6 +66,9 @@ public partial class MainWindow : Window
             if (e.PropertyName == nameof(ShellViewModel.HasActiveAlert)) ApplyAlertBadge();
         };
         Shell.AlertArrived += () => { if (!IsActive) TaskbarFlash.Flash(this); };
+        // a filing-loop exception the view model didn't expect still reaches
+        // crash.log — the user has already been warned by then
+        Shell.UnexpectedError += App.LogCrash;
         Shell.SettingsApplied += () =>
         {
             App.ApplyFont(Application.Current, Shell.Cfg);

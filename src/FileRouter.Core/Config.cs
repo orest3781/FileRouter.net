@@ -153,6 +153,7 @@ public sealed class Config
         {
             throw new ConfigException($"Config file {path} could not be read: {ex.Message}");
         }
+        cfg.Normalize();
         if (Array.IndexOf(Naming.Modes, cfg.NamingMode) < 0)
             throw new ConfigException(
                 $"naming_mode must be one of insert/replace, got \"{cfg.NamingMode}\"");
@@ -173,6 +174,61 @@ public sealed class Config
                 $"poll_seconds must be 5-600, got {cfg.PollSeconds}");
         return cfg;
     }
+
+    /// <summary>An explicit JSON null means the same thing as an absent key:
+    /// use the default. System.Text.Json only applies a property initializer
+    /// when the key is MISSING, so `"routes": null` would otherwise leave a
+    /// null field that crashes later — at the first keystroke, not at load.
+    /// Hand-editing config.json is a supported workflow, so every nullable
+    /// field gets put back to its declared default here.</summary>
+    private void Normalize()
+    {
+        Inbox ??= "";
+        Deferred ??= "";
+        NamesFile ??= "names.txt";
+        HistoryDb ??= "history.sqlite";
+        NamingMode ??= "insert";
+        Sort ??= "size_desc";
+        MonitorTitle ??= "Monitored folders";
+        TileVisibility ??= "active";
+        UiFontFamily ??= "";
+        Theme ??= "auto";
+        WordSeparator ??= "";
+        UnlockSuffix ??= "";
+
+        Routes = Clean(Routes);
+        WatchFolders = Clean(WatchFolders);
+        SavedPasswords = Clean(SavedPasswords);
+        LabelClients = Clean(LabelClients);
+        AlertTexts = Clean(AlertTexts);
+        MergeHeaders ??= new();
+        Extras ??= new();
+
+        Sounds ??= new();
+        Sounds.NewAlert ??= "";
+        Sounds.Filed ??= "none";
+        Sounds.SetAside ??= "none";
+        Sounds.Error ??= "";
+        Sounds.Extras ??= new();
+
+        foreach (var r in Routes)
+        {
+            r.Label ??= ""; r.Path ??= ""; r.Hotkey ??= ""; r.Suffix ??= "";
+            r.Extras ??= new();
+        }
+        foreach (var w in WatchFolders)
+        {
+            w.Label ??= ""; w.Path ??= ""; w.Filetypes ??= "";
+            w.Extras ??= new();
+        }
+        foreach (var p in SavedPasswords) { p.Label ??= ""; p.Password ??= ""; }
+        foreach (var c in LabelClients) { c.Id ??= ""; c.Extras ??= new(); }
+    }
+
+    /// <summary>A null list becomes empty; a list with null ENTRIES (a stray
+    /// comma in hand-edited JSON) drops them rather than keeping a null item.</summary>
+    private static List<T> Clean<T>(List<T>? items) where T : class =>
+        items is null ? new() : items.Where(i => i is not null).ToList();
 
     public static void Save(Config cfg, string path) =>
         File.WriteAllText(path, JsonSerializer.Serialize(cfg, Opts) + "\n");

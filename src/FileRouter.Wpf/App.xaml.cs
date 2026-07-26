@@ -29,6 +29,7 @@ public partial class App : Application
         _cfgPath = e.Args.Length >= 2 && e.Args[0] == "--config"
             ? e.Args[1]
             : Path.Combine(AppContext.BaseDirectory, "config.json");
+        _crashDir = Path.GetDirectoryName(Path.GetFullPath(_cfgPath)) ?? ".";
 
         Config cfg;
         try
@@ -76,12 +77,16 @@ public partial class App : Application
         app.Resources["AppFontSize"] = cfg.UiFontSize == 0 ? 14.0 : (double)cfg.UiFontSize;
     }
 
-    private void LogCrash(Exception? ex)
+    /// <summary>Where crash.log goes: beside the config. Static so the shell can
+    /// route an unexpected filing-loop exception here too.</summary>
+    private static string _crashDir = ".";
+
+    internal static void LogCrash(Exception? ex)
     {
         if (ex is null) return;
         try
         {
-            var dir = Path.GetDirectoryName(Path.GetFullPath(_cfgPath)) ?? ".";
+            var dir = _crashDir;
             File.AppendAllText(Path.Combine(dir, "crash.log"),
                 $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {ex}\n\n");
         }

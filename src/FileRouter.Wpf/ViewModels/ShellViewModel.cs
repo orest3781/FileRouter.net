@@ -78,7 +78,36 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         StopCommand = new RelayCommand(StopSession);
         ExportHistoryCommand = new RelayCommand(ExportHistory);
 
+        // Without these the async commands swallow every unexpected exception:
+        // a failed filing would look like a button that simply did nothing.
+        RouteCommand.OnError += ReportUnexpected;
+        SkipCommand.OnError += ReportUnexpected;
+        UndoCommand.OnError += ReportUnexpected;
+
         _watch.Activity += OnFolderActivity;
+    }
+
+    /// <summary>Raised for an exception no handler anticipated, so the window can
+    /// put it in crash.log. The user is warned either way.</summary>
+    public event Action<Exception>? UnexpectedError;
+
+    private void ReportUnexpected(Exception ex)
+    {
+        UnexpectedError?.Invoke(ex);
+        _dialogs.Warn(
+            "Something went wrong and the last action may not have finished.\n\n" +
+            ex.Message + "\n\nDetails were written to crash.log.", "Sendu");
+    }
+
+    /// <summary>Tell the user a document moved but went unrecorded, and keep
+    /// going — the queue has already advanced past it.</summary>
+    private void ReportAuditFailure(AuditError ex, string title)
+    {
+        if (_cfg.Sounds.Enabled) _sounds.Play(SoundEvent.Error, _cfg.Sounds.Error);
+        UnexpectedError?.Invoke(ex);
+        _dialogs.Warn(ex.Message, title);
+        StatusLine = $"{Path.GetFileName(ex.NewPath)} moved, but the history " +
+                     "database didn't record it — see the warning.";
     }
 
     internal Config Cfg => _cfg;
@@ -255,7 +284,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                 ? $"{scan.IgnoredCount} other file{(scan.IgnoredCount == 1 ? "" : "s")} ignored"
                 : "");
         StartEnabled = scan.Count > 0;
-        RefreshDashboard(scan, snap.Statuses ?? new List<FolderMonitor.FolderStatus>());
+        RefreshDashboard(scan, snap.Statuses);
     }
 
     private void ApplyDeferred(Scanner.DeferredInfo info)
@@ -342,8 +371,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// changed — the 30 s poll must not replay the fade-in on identical tiles
     /// (the "blink").</summary>
     private void RefreshDashboard(Scanner.ScanResult inboxScan,
-        List<FolderMonitor.FolderStatus> statuses)
+        List<FolderMonitor.FolderStatus>? swept)
     {
+        var statuses = swept ?? new List<FolderMonitor.FolderStatus>();
         var p = _palette();
         var signature = statuses.Select(s =>
             $"{s.Label}|{s.Path}|{s.Color}|{s.Count}|{s.Error}|{s.Alerting}"
@@ -366,7 +396,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
         var anyAlert = InboxAlerting || statuses.Any(s => s.Alerting);
         HasActiveAlert = anyAlert;
-        DetectNewAlerts(inboxScan, statuses);
+        DetectNewAlerts(inboxScan, swept);
 
         if (anyAlert && _cfg.FlashAlerts)
         {
@@ -388,8 +418,15 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     // ------------------------------------------------------------ new alerts
     // A per-file memory: which alerting files we've already reacted to. The
     // sound, the toast, and the window flash all fire ONCE per newly-arrived
-    // alerting file — never on the 30 s poll re-seeing the same one.
-    private readonly HashSet<string> _seenAlerts = new();
+    // alerting file — never on a later poll re-seeing the same one.
+    //
+    // The inbox and the watch folders are remembered SEPARATELY because they
+    // are not always scanned together: Hidden mode skips the watch-folder
+    // sweep. A skipped sweep is not evidence the alert went away, so it must
+    // leave that half of the memory alone — otherwise re-showing the tiles
+    // would replay every standing alert as if it had just landed.
+    private readonly HashSet<string> _seenInboxAlerts = new();
+    private readonly HashSet<string> _seenFolderAlerts = new();
     private bool _alertsSeeded;
 
     /// <summary>True while any alerting file exists — drives the taskbar badge.</summary>
@@ -402,13 +439,21 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     private sealed record AlertItem(string Key, string Label, string File, string Folder);
 
+    /// <param name="swept">Watch-folder statuses, or null when the sweep was
+    /// skipped — in which case the folder half of the memory is left intact.</param>
     private void DetectNewAlerts(Scanner.ScanResult inboxScan,
-        List<FolderMonitor.FolderStatus> statuses)
+        List<FolderMonitor.FolderStatus>? swept)
     {
+        // watch folders first, so the toast names one of those over an inbox
+        // hit when several land at once
         var current = new List<AlertItem>();
-        foreach (var s in statuses.Where(s => s.Alerting))
-            foreach (var m in s.Matches)
-                current.Add(new AlertItem($"{s.Path}\0{m}", s.Label, Path.GetFileName(m), s.Path));
+        if (swept is not null)
+            foreach (var s in swept.Where(s => s.Alerting))
+                foreach (var m in s.Matches)
+                    current.Add(new AlertItem($"{s.Path}\0{m}", s.Label,
+                        Path.GetFileName(m), s.Path));
+        var folderCount = current.Count;
+
         foreach (var f in inboxScan.Matching)
         {
             var nm = Path.GetFileName(f);
@@ -416,17 +461,26 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                 current.Add(new AlertItem($"inbox\0{nm}", "the inbox", nm, _cfg.Inbox));
         }
 
-        var live = current.Select(a => a.Key).ToHashSet();
         // first sweep after launch/rescan: adopt what's already there silently —
         // the red tiles are visible; the chime is for things that arrive later
         if (_alertsSeeded)
         {
-            var fresh = current.Where(a => !_seenAlerts.Contains(a.Key)).ToList();
+            var fresh = current
+                .Where((a, i) => !(i < folderCount ? _seenFolderAlerts : _seenInboxAlerts)
+                    .Contains(a.Key))
+                .ToList();
             if (fresh.Count > 0) RaiseNewAlerts(fresh);
         }
         _alertsSeeded = true;
-        _seenAlerts.Clear();
-        foreach (var k in live) _seenAlerts.Add(k);
+
+        Remember(_seenInboxAlerts, current.Skip(folderCount));
+        if (swept is not null) Remember(_seenFolderAlerts, current.Take(folderCount));
+    }
+
+    private static void Remember(HashSet<string> memory, IEnumerable<AlertItem> live)
+    {
+        memory.Clear();
+        foreach (var a in live) memory.Add(a.Key);
     }
 
     private void RaiseNewAlerts(List<AlertItem> fresh)
@@ -710,6 +764,15 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                         Path.GetFileName(outcome.NewPath!), back);
                 }
             }
+            catch (AuditError ex)
+            {
+                // the move already happened and the queue moved with it — report
+                // and carry on rather than reloading a document that isn't there
+                _lastRoute = index;
+                MarkEnterRoute();
+                HideLastAction();
+                ReportAuditFailure(ex, "Sendu — filed, but not recorded");
+            }
             catch (CommitError ex)
             {
                 if (_cfg.Sounds.Enabled) _sounds.Play(SoundEvent.Error, _cfg.Sounds.Error);
@@ -743,6 +806,11 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                     if (_cfg.Sounds.Enabled) _sounds.Play(SoundEvent.SetAside, _cfg.Sounds.SetAside);
                 }
             }
+            catch (AuditError ex)
+            {
+                HideLastAction();
+                ReportAuditFailure(ex, "Sendu — set aside, but not recorded");
+            }
             catch (CommitError ex)
             {
                 if (_cfg.Sounds.Enabled) _sounds.Play(SoundEvent.Error, _cfg.Sounds.Error);
@@ -768,6 +836,12 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                 var (filed, original) = await _scheduler.Run(() => _session.UndoLast());
                 StatusLine = $"Undid {Path.GetFileName(filed)} → {Path.GetFileName(original)}";
                 HideLastAction();   // the card must never claim an undone filing
+            }
+            catch (AuditError ex)
+            {
+                // the file is back; only the history row is stale
+                HideLastAction();
+                ReportAuditFailure(ex, "Sendu — undone, but still logged as filed");
             }
             catch (CommitError ex)
             {
@@ -938,9 +1012,20 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         var history = _history;
         // seed-file read + SQLite query off-thread; polished once here so a
         // seed list with spaces still suggests correctly with a separator set
-        _allNames = await _scheduler.Run(() =>
-            Completer.Names(history, Completer.LoadSeedNames(namesFile))
-                .Select(Polish).Distinct().ToList());
+        try
+        {
+            _allNames = await _scheduler.Run(() =>
+                Completer.Names(history, Completer.LoadSeedNames(namesFile))
+                    .Select(Polish).Distinct().ToList());
+        }
+        catch (Exception)
+        {
+            // Suggestions are a convenience, and this runs after EVERY commit.
+            // An unreadable history (locked share, a DB that just died) must
+            // not abort the filing loop on its way to the next document — keep
+            // the names we already have and move on.
+            return;
+        }
         RefreshSuggestions();
     }
 

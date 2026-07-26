@@ -27,7 +27,12 @@ public sealed class NullSoundService : ISoundService
 /// missing custom .wav or a dead audio device must never break filing.</summary>
 public sealed class SoundService : ISoundService
 {
-    private readonly Dictionary<SoundEvent, byte[]?> _builtin = new();
+    // Concurrent because every Play runs on a thread-pool thread and two can
+    // overlap — setting aside the LAST document fires SetAside and the
+    // session-done sound back to back, and a plain Dictionary written from both
+    // at once can tear or spin.
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<
+        SoundEvent, byte[]?> _builtin = new();
 
     public void Play(SoundEvent evt, string spec)
     {
@@ -62,9 +67,10 @@ public sealed class SoundService : ISoundService
         player.PlaySync();
     }
 
-    private byte[]? BuiltinBytes(SoundEvent evt)
+    private byte[]? BuiltinBytes(SoundEvent evt) => _builtin.GetOrAdd(evt, LoadBuiltin);
+
+    private static byte[]? LoadBuiltin(SoundEvent evt)
     {
-        if (_builtin.TryGetValue(evt, out var cached)) return cached;
         var name = evt switch
         {
             SoundEvent.NewAlert => "sendu-alert",
@@ -86,7 +92,6 @@ public sealed class SoundService : ISoundService
             }
             catch { bytes = null; }
         }
-        _builtin[evt] = bytes;
         return bytes;
     }
 

@@ -54,6 +54,31 @@ public sealed class Session
         return added.Count;
     }
 
+    /// <summary>Write the audit row, or report why not. Never throws: the
+    /// document has already moved by the time this runs, so a failure here must
+    /// not abort the state update that records the move — only describe it.
+    /// Returns the row id, or -1 with <paramref name="failure"/> set.</summary>
+    private long TryLog(Func<long> write, out string? failure)
+    {
+        try
+        {
+            var rowId = write();
+            RowIds.Add(rowId);
+            failure = null;
+            return rowId;
+        }
+        catch (Exception ex)
+        {
+            failure = $"{ex.GetType().Name}: {ex.Message}";
+            return -1;
+        }
+    }
+
+    private static AuditError AuditFailure(string newPath, string what, string failure) =>
+        new(newPath, $"{what} was moved to:\n\n{newPath}\n\n" +
+                     "…but the history database could not record it, so this " +
+                     "document is missing from the audit trail:\n\n" + failure);
+
     public Commit.CommitOutcome CommitCurrent(string typedName, Route route)
     {
         var src = Current ?? throw new CommitError("No document is loaded.");
@@ -61,15 +86,19 @@ public sealed class Session
         if (outcome.Vanished) { LogVanished(src); return outcome; }
 
         var result = outcome.NameResult!;
-        var rowId = _history.LogCommit(
+        var rowId = TryLog(() => _history.LogCommit(
             src, Path.GetFileName(src), result.Filename,
             Naming.IsBlankName(typedName) ? "" : typedName, result.ModeUsed,
             result.SuffixApplied, route.Label, route.Path, tagged: false,
-            result.CollisionSuffix);
-        RowIds.Add(rowId);
+            result.CollisionSuffix), out var failure);
+
+        // the file is GONE from the inbox — advance regardless, or the next
+        // press would find it missing and log it as <vanished>
         Push(new UndoEntry(rowId, Pos, outcome.NewPath!, src, false));
         Filed++;
         Pos++;
+        if (failure is not null)
+            throw AuditFailure(outcome.NewPath!, Path.GetFileName(src), failure);
         return outcome;
     }
 
@@ -79,14 +108,15 @@ public sealed class Session
         var outcome = Commit.SkipFile(src, _cfg.Deferred);
         if (outcome.Vanished) { LogVanished(src); return outcome; }
 
-        var rowId = _history.LogCommit(
+        var rowId = TryLog(() => _history.LogCommit(
             src, Path.GetFileName(src), Path.GetFileName(outcome.NewPath!),
             "", SessionMode, "", SkipLabel, _cfg.Deferred, tagged: false,
-            outcome.CollisionSuffix);
-        RowIds.Add(rowId);
+            outcome.CollisionSuffix), out var failure);
         Push(new UndoEntry(rowId, Pos, outcome.NewPath!, src, true));
         Skipped++;
         Pos++;
+        if (failure is not null)
+            throw AuditFailure(outcome.NewPath!, Path.GetFileName(src), failure);
         return outcome;
     }
 
@@ -95,10 +125,22 @@ public sealed class Session
         if (_undo.Count == 0) throw new CommitError("Nothing to undo.");
         var entry = _undo.Last!.Value;
         Commit.UndoAction(entry.FiledPath, entry.OriginalPath);
+        // the file is BACK — the counts must say so even if the audit write
+        // fails, and an unrecorded commit (RowId -1) has no row to mark
         _undo.RemoveLast();
-        _history.MarkReverted(entry.RowId);
         if (entry.WasSkip) Skipped--; else Filed--;
         Pos = entry.QueueIndex;   // the restored file is current again
+        string? failure = null;
+        if (entry.RowId >= 0)
+        {
+            try { _history.MarkReverted(entry.RowId); }
+            catch (Exception ex) { failure = $"{ex.GetType().Name}: {ex.Message}"; }
+        }
+        if (failure is not null)
+            throw new AuditError(entry.OriginalPath,
+                $"{Path.GetFileName(entry.FiledPath)} was moved back to:\n\n" +
+                $"{entry.OriginalPath}\n\n…but the history database still shows " +
+                "it as filed:\n\n" + failure);
         return (entry.FiledPath, entry.OriginalPath);
     }
 
@@ -110,11 +152,17 @@ public sealed class Session
 
     private void LogVanished(string src)
     {
-        var rowId = _history.LogCommit(
+        TryLog(() => _history.LogCommit(
             src, Path.GetFileName(src), Path.GetFileName(src), "", SessionMode,
-            "", VanishedLabel, "", tagged: false, "");
-        RowIds.Add(rowId);
+            "", VanishedLabel, "", tagged: false, ""), out var failure);
+        // advance either way — a ghost we can't log is still a ghost, and
+        // stalling here would loop the same missing file forever
         Vanished++;
         Pos++;
+        if (failure is not null)
+            throw new AuditError(src,
+                $"{Path.GetFileName(src)} was gone from the inbox before it " +
+                "could be filed, and the history database could not record " +
+                "that either:\n\n" + failure);
     }
 }
