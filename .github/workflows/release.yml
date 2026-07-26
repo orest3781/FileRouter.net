@@ -85,15 +85,17 @@ jobs:
 
       # zips download cleaner than bare exes (browsers and SmartScreen are
       # kinder to archives), and they carry a proper inner filename
+      # the product is sendu; the assembly keeps its FileRouter.Wpf name for
+      # compatibility, so the zip carries a friendly sendu.exe inside
       - name: Zip the assets
         shell: pwsh
         run: |
-          Copy-Item out/portable/FileRouter.Wpf.exe FileRouter.exe
-          Compress-Archive -Path FileRouter.exe -DestinationPath "FileRouter-${{ steps.ver.outputs.tag }}-win-x64.zip"
-          Remove-Item FileRouter.exe
-          Copy-Item out/selfcontained/FileRouter.Wpf.exe FileRouter.exe
-          Compress-Archive -Path FileRouter.exe -DestinationPath "FileRouter-${{ steps.ver.outputs.tag }}-win-x64-selfcontained.zip"
-          Remove-Item FileRouter.exe
+          Copy-Item out/portable/FileRouter.Wpf.exe sendu.exe
+          Compress-Archive -Path sendu.exe -DestinationPath "sendu-${{ steps.ver.outputs.tag }}-win-x64.zip"
+          Remove-Item sendu.exe
+          Copy-Item out/selfcontained/FileRouter.Wpf.exe sendu.exe
+          Compress-Archive -Path sendu.exe -DestinationPath "sendu-${{ steps.ver.outputs.tag }}-win-x64-selfcontained.zip"
+          Remove-Item sendu.exe
 
       - name: Create the GitHub release
         if: startsWith(github.ref, 'refs/tags/')
@@ -102,14 +104,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: >
           gh release create "${{ steps.ver.outputs.tag }}"
-          "FileRouter-${{ steps.ver.outputs.tag }}-win-x64.zip"
-          "FileRouter-${{ steps.ver.outputs.tag }}-win-x64-selfcontained.zip"
-          --title "FileRouter ${{ steps.ver.outputs.tag }}"
+          "sendu-${{ steps.ver.outputs.tag }}-win-x64.zip"
+          "sendu-${{ steps.ver.outputs.tag }}-win-x64-selfcontained.zip"
+          --title "sendu ${{ steps.ver.outputs.tag }}"
           --generate-notes
 
       - name: Upload workflow artifacts (manual run)
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         uses: actions/upload-artifact@v4
         with:
-          name: FileRouter-win-x64
-          path: FileRouter-*.zip
+          name: sendu-win-x64
+          path: sendu-*.zip

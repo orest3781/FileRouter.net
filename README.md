@@ -25,7 +25,7 @@ already on the machine), so no PDF library ships with the app.
 Portable builds are attached to every [release](../../releases) (and every CI
 run uploads one under the run's Artifacts):
 
-- **`FileRouter-vX-win-x64.zip`** (~5 MB) — a single exe; needs the .NET 8
+- **`sendu-vX-win-x64.zip`** (~5 MB) — a single exe; needs the .NET 8
   Desktop Runtime, which modern Windows 10/11 machines already have (Windows
   offers the download link if it's missing).
 - **`…-selfcontained.zip`** (~70 MB) — carries the runtime; nothing to
@@ -35,7 +35,7 @@ Unzip anywhere and run — the app reads (or creates on first run) a
 `config.json` beside the exe, or takes `--config <path>`. Locally,
 `publish.bat` builds the same portable exe into `publish\`.
 
-To cut a release: `git tag v1.0.0 && git push origin v1.0.0` — the Release
+To cut a release: `git tag v1.2.0 && git push origin v1.2.0` — the Release
 workflow tests, builds, zips, and publishes.
 
 ## Design goals
