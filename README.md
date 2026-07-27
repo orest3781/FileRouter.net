@@ -1,3 +1,15 @@
+> [!IMPORTANT]
+> **Sendu has moved to [orest3781/sendu](https://github.com/orest3781/sendu).**
+>
+> This repository is archived and read-only. Development, releases and the
+> project site all continue there:
+>
+> - **[Download the latest release](https://github.com/orest3781/sendu/releases/latest)** — v1.2.0 and everything after it
+> - **[orest3781.github.io/sendu](https://orest3781.github.io/sendu/)** — the project site
+>
+> The `v1.0.0` and `v1.1.0` releases on this repository stay available so
+> existing installs keep working. Nothing else here will be updated.
+
 <p align="center">
   <img src="docs/banner.png" alt="sendu — every document, where it belongs" width="840">
 </p>
